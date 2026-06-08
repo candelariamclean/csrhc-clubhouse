@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<title>Sumate al nuevo Club House — Coronel Suárez Rugby & Hockey Club</title>
+<style>
+
+:root {
+  --verde-rugby: #1B4D2E;
+  --verde-rugby-osc: #0F3520;
+  --verde-rugby-claro: #3B6D3B;
+  --dorado: #D4A547;
+  --dorado-osc: #9C7723;
+  --crema: #F7F4EC;
+  --crema-osc: #EDE5D1;
+  --tierra: #8B6A3F;
+  --tierra-osc: #5A4528;
+  --texto: #1a1a1a;
+  --texto-suave: #6a6a68;
+  --borde: rgba(27, 77, 46, 0.18);
+  --error: #B83C3C;
+  --exito: #3B6D3B;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  background: var(--crema);
+  color: var(--texto);
+  line-height: 1.5;
+  overflow: hidden;
+}
+
+/* HEADER */
+.header {
+  position: fixed; top: 0; left: 0; right: 0; height: 56px;
+  background: var(--verde-rugby); color: white;
+  display: flex; align-items: center; padding: 0 20px;
+  z-index: 50;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+}
+.brand { font-weight: 600; font-size: 16px; letter-spacing: 0.3px; }
+.brand small { display: block; font-weight: 400; font-size: 11px; opacity: 0.85; letter-spacing: 0.2px; }
+.nav-spacer { flex: 1; }
+.nav-link {
+  background: none; border: none; color: rgba(255,255,255,0.92);
+  font-size: 14px; padding: 8px 14px; cursor: pointer;
+  transition: background 0.15s;
+}
+.nav-link:hover { background: rgba(255,255,255,0.1); border-radius: 4px; }
+.btn-cta {
+  background: var(--dorado); color: var(--verde-rugby-osc);
+  border: none; padding: 8px 16px; border-radius: 4px;
+  font-weight: 600; font-size: 13px; cursor: pointer;
+  margin-left: 8px;
+  transition: background 0.15s;
+}
+.btn-cta:hover { background: #E8B956; }
+
+/* LANDING (overlay sobre el mapa) */
+.landing-overlay {
+  position: fixed; inset: 56px 0 0 0;
+  background: rgba(15, 53, 32, 0.78);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 30; padding: 20px;
+  transition: opacity 0.4s;
+}
+.landing-card {
+  background: white; border-radius: 8px;
+  max-width: 600px; width: 100%; padding: 40px;
+  text-align: center; max-height: 90vh; overflow-y: auto;
+}
+.landing-card h1 {
+  font-size: 28px; font-weight: 600; color: var(--verde-rugby);
+  margin-bottom: 8px; line-height: 1.2;
+}
+.landing-card .subtitle {
+  font-size: 15px; color: var(--texto-suave); margin-bottom: 24px;
+}
+.landing-card p { font-size: 14px; line-height: 1.7; color: var(--texto); margin-bottom: 16px; }
+.landing-card .stats {
+  display: flex; gap: 16px; margin: 24px 0; padding: 20px;
+  background: var(--crema); border-radius: 6px;
+}
+.landing-card .stat { flex: 1; }
+.landing-card .stat .num { font-size: 22px; font-weight: 600; color: var(--verde-rugby); }
+.landing-card .stat .lbl { font-size: 12px; color: var(--texto-suave); }
+.landing-card .actions { display: flex; gap: 12px; justify-content: center; margin-top: 24px; }
+
+/* MAPA */
+.mapa-container {
+  position: fixed; top: 56px; left: 0; right: 0; bottom: 56px;
+  overflow: hidden; cursor: grab;
+  background: linear-gradient(to bottom, #C8D5A8 0%, #E8E0CC 100%);
+}
+.mapa-container.grabbing { cursor: grabbing; }
+.mapa-svg-wrap {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%) scale(1);
+  transform-origin: center center;
+  transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 700px; height: 480px;
+  pointer-events: none;
+}
+.mapa-svg-wrap.no-anim { transition: none; }
+.mapa-svg-wrap svg { width: 100%; height: 100%; pointer-events: none; }
+.mapa-svg-wrap svg .lote { pointer-events: auto; cursor: pointer; transition: opacity 0.15s; }
+.mapa-svg-wrap svg .lote:hover { opacity: 1 !important; }
+.mapa-svg-wrap svg .lote.dim { opacity: 0.18; pointer-events: none; }
+
+/* CONTROLES SUPERIORES (filtros + zoom) */
+.toolbar {
+  position: fixed; top: 72px; left: 16px; z-index: 20;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.filtros {
+  background: white; padding: 8px; border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  display: flex; gap: 4px; flex-wrap: wrap;
+}
+.filtro-btn {
+  background: white; border: 1px solid var(--borde);
+  padding: 6px 12px; border-radius: 4px; font-size: 12px;
+  cursor: pointer; display: flex; align-items: center; gap: 6px;
+  transition: all 0.15s;
+}
+.filtro-btn .swatch { width: 12px; height: 12px; border-radius: 2px; }
+.filtro-btn:hover { background: var(--crema); }
+.filtro-btn.activo { background: var(--verde-rugby); color: white; border-color: var(--verde-rugby); }
+.filtro-btn.activo .swatch { box-shadow: 0 0 0 1px white; }
+
+/* PROGRESO + COUNTER */
+.stats-bar {
+  position: fixed; top: 72px; right: 16px; z-index: 20;
+  background: white; padding: 12px 16px; border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  display: flex; align-items: center; gap: 16px;
+  font-size: 13px;
+}
+.stats-bar .num { font-weight: 600; color: var(--verde-rugby); font-size: 16px; }
+.stats-bar .progress-wrap {
+  width: 120px; height: 6px; background: var(--crema-osc);
+  border-radius: 3px; overflow: hidden;
+}
+.stats-bar .progress-fill {
+  height: 100%; background: var(--verde-rugby);
+  border-radius: 3px; transition: width 0.4s;
+}
+
+/* ZOOM CONTROLS */
+.zoom-controls {
+  position: fixed; bottom: 72px; right: 16px; z-index: 20;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.zoom-btn {
+  width: 36px; height: 36px;
+  background: white; border: 1px solid var(--borde);
+  border-radius: 4px; cursor: pointer; font-size: 18px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+  transition: background 0.15s;
+}
+.zoom-btn:hover { background: var(--crema); }
+.zoom-btn:active { transform: scale(0.95); }
+
+/* FOOTER */
+.footer {
+  position: fixed; bottom: 0; left: 0; right: 0; height: 56px;
+  background: white; border-top: 1px solid var(--borde);
+  display: flex; align-items: center; padding: 0 20px;
+  z-index: 25; gap: 16px; font-size: 12px; color: var(--texto-suave);
+}
+.help-btn {
+  background: none; border: 1px solid var(--borde);
+  padding: 6px 12px; border-radius: 4px; cursor: pointer;
+  font-size: 12px; color: var(--verde-rugby);
+}
+
+/* TOOLTIP */
+.tooltip {
+  position: fixed; pointer-events: none;
+  background: rgba(15, 53, 32, 0.95); color: white;
+  padding: 6px 10px; border-radius: 4px;
+  font-size: 12px; font-weight: 500;
+  z-index: 60; white-space: nowrap;
+  opacity: 0; transition: opacity 0.1s;
+  transform: translate(-50%, -130%);
+}
+.tooltip.show { opacity: 1; }
+.tooltip .price { color: var(--dorado); }
+
+/* MODAL */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(15, 53, 32, 0.55);
+  display: none; align-items: center; justify-content: center;
+  z-index: 100; padding: 20px;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+  background: white; border-radius: 8px; padding: 28px;
+  max-width: 460px; width: 100%; max-height: 90vh; overflow-y: auto;
+}
+.modal h2 {
+  font-size: 20px; font-weight: 600; color: var(--verde-rugby);
+  margin-bottom: 4px;
+}
+.modal .subt { font-size: 13px; color: var(--texto-suave); margin-bottom: 20px; }
+.modal label {
+  display: block; font-size: 12px; font-weight: 500;
+  color: var(--texto); margin-bottom: 4px; margin-top: 12px;
+}
+.modal input, .modal select, .modal textarea {
+  width: 100%; padding: 9px 10px; font-size: 14px;
+  border: 1px solid var(--borde); border-radius: 4px;
+  background: white; font-family: inherit;
+  outline: none; transition: border-color 0.15s;
+}
+.modal input:focus, .modal select:focus, .modal textarea:focus {
+  border-color: var(--verde-rugby);
+}
+.modal .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.modal .pill-group { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.modal .pill {
+  flex: 1; min-width: 80px; padding: 9px 10px;
+  border: 1px solid var(--borde); border-radius: 4px;
+  background: white; cursor: pointer; font-size: 13px;
+  text-align: center; transition: all 0.15s;
+}
+.modal .pill:hover { background: var(--crema); }
+.modal .pill.activo {
+  background: var(--verde-rugby); color: white; border-color: var(--verde-rugby);
+}
+.modal .lote-info {
+  background: var(--crema); padding: 12px; border-radius: 4px;
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 16px;
+}
+.modal .lote-info .id { font-size: 13px; color: var(--texto-suave); }
+.modal .lote-info .precio { font-size: 22px; font-weight: 600; color: var(--verde-rugby); }
+.modal .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+.modal .actions .btn-secundario {
+  background: white; color: var(--texto); border: 1px solid var(--borde);
+  padding: 9px 18px; border-radius: 4px; font-size: 13px; cursor: pointer;
+}
+.modal .actions .btn-primario {
+  background: var(--verde-rugby); color: white; border: 1px solid var(--verde-rugby-osc);
+  padding: 9px 22px; border-radius: 4px; font-size: 13px; font-weight: 500; cursor: pointer;
+}
+.modal .actions .btn-primario:hover { background: var(--verde-rugby-osc); }
+.modal .terminos {
+  display: flex; align-items: flex-start; gap: 8px;
+  margin-top: 16px; font-size: 12px; color: var(--texto-suave);
+}
+.modal .terminos input { width: auto; }
+.modal .terminos a { color: var(--verde-rugby); text-decoration: underline; }
+
+/* PÁGINAS INFO (proyecto/faq/etc.) */
+.info-overlay {
+  position: fixed; inset: 56px 0 0 0; background: rgba(15, 53, 32, 0.55);
+  display: none; z-index: 80; align-items: flex-start; justify-content: center;
+  padding: 30px 20px; overflow-y: auto;
+}
+.info-overlay.show { display: flex; }
+.info-panel {
+  background: white; border-radius: 8px; padding: 36px 40px;
+  max-width: 720px; width: 100%; margin: 20px auto;
+}
+.info-panel h2 {
+  font-size: 24px; font-weight: 600; color: var(--verde-rugby);
+  margin-bottom: 6px;
+}
+.info-panel .subtitle {
+  font-size: 14px; color: var(--texto-suave); margin-bottom: 24px;
+}
+.info-panel h3 {
+  font-size: 16px; font-weight: 600; color: var(--verde-rugby);
+  margin-top: 22px; margin-bottom: 8px;
+}
+.info-panel p { font-size: 14px; line-height: 1.75; margin-bottom: 12px; color: var(--texto); }
+.info-panel ul { margin: 8px 0 16px 22px; }
+.info-panel li { font-size: 14px; line-height: 1.8; }
+.info-panel .faq-item {
+  border-bottom: 1px solid var(--borde); padding: 14px 0;
+}
+.info-panel .faq-q {
+  font-weight: 500; cursor: pointer; user-select: none;
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 14px;
+}
+.info-panel .faq-q::after { content: "+"; color: var(--verde-rugby); font-size: 18px; }
+.info-panel .faq-item.open .faq-q::after { content: "−"; }
+.info-panel .faq-a {
+  display: none; margin-top: 10px; font-size: 13px;
+  color: var(--texto-suave); line-height: 1.7;
+}
+.info-panel .faq-item.open .faq-a { display: block; }
+.info-panel .close-x {
+  position: absolute; top: 16px; right: 20px; font-size: 24px;
+  background: none; border: none; cursor: pointer; color: var(--texto-suave);
+  width: 32px; height: 32px; border-radius: 50%;
+}
+.info-panel .close-x:hover { background: var(--crema); }
+.info-panel-wrap { position: relative; max-width: 720px; width: 100%; }
+
+/* RANKING DRAWER */
+.ranking-drawer {
+  position: fixed; top: 56px; right: -340px; bottom: 56px; width: 320px;
+  background: white; border-left: 1px solid var(--borde);
+  z-index: 40; transition: right 0.3s; overflow-y: auto;
+  box-shadow: -2px 0 8px rgba(0,0,0,0.08);
+}
+.ranking-drawer.open { right: 0; }
+.ranking-drawer h3 {
+  padding: 16px 20px; font-size: 15px; font-weight: 600;
+  color: var(--verde-rugby); border-bottom: 1px solid var(--borde);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.ranking-drawer .ranking-item {
+  padding: 10px 20px; border-bottom: 1px solid var(--borde);
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 13px;
+}
+.ranking-drawer .ranking-item .nombre { font-weight: 500; }
+.ranking-drawer .ranking-item .monto {
+  font-weight: 600; color: var(--dorado-osc); font-size: 13px;
+}
+.ranking-toggle {
+  position: fixed; top: 50%; right: 0; transform: translateY(-50%);
+  background: var(--verde-rugby); color: white; border: none;
+  width: 32px; height: 80px; border-radius: 6px 0 0 6px;
+  cursor: pointer; z-index: 35;
+  font-size: 11px; writing-mode: vertical-rl;
+  letter-spacing: 1px;
+  transition: opacity 0.3s;
+}
+.ranking-toggle.hidden { opacity: 0; pointer-events: none; }
+
+@media (max-width: 720px) {
+  .header { padding: 0 10px; }
+  .brand { font-size: 0; max-width: 36px; }
+  .brand::before {
+    content: ''; display: block;
+    width: 28px; height: 28px;
+    background: var(--dorado);
+    border-radius: 50%;
+  }
+  .brand small { display: none; }
+  .nav-link { padding: 8px 6px; font-size: 11px; }
+  .toolbar { left: 8px; top: 64px; right: 8px; }
+  .filtros { font-size: 11px; padding: 4px; gap: 2px; }
+  .filtro-btn { padding: 5px 8px; font-size: 11px; }
+  .stats-bar {
+    position: fixed; right: auto; left: 8px; right: 8px;
+    top: auto; bottom: 64px;
+    padding: 8px 12px; gap: 10px; font-size: 11px;
+    justify-content: space-between;
+  }
+  .stats-bar .num { font-size: 14px; }
+  .stats-bar .progress-wrap { width: 60px; }
+  .zoom-controls { bottom: 130px; right: 8px; }
+  .zoom-btn { width: 30px; height: 30px; }
+  .modal { padding: 22px; }
+  .info-panel { padding: 24px 20px; }
+  .ranking-toggle { display: none; }
+  .footer { font-size: 10px; padding: 0 12px; }
+}
+
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="brand">
+    Sumate al nuevo Club House
+    <small>Coronel Suárez Rugby & Hockey Club</small>
+  </div>
+  <div class="nav-spacer"></div>
+  <button class="nav-link" onclick="abrirInfo('proyecto')">Proyecto</button>
+  <button class="nav-link" onclick="abrirInfo('faq')">FAQ</button>
+  <button class="nav-link" onclick="abrirInfo('club')">El Club</button>
+  <button class="nav-link" onclick="abrirInfo('contacto')">Contacto</button>
+  <button class="btn-cta" onclick="cerrarLanding()">Comprar lote</button>
+</header>
+
+<div class="mapa-container" id="mapa">
+  <div class="mapa-svg-wrap" id="mapa-wrap">
+    <svg viewBox="0 50 620 420" preserveAspectRatio="xMidYMid meet" id="render-svg">
+<polygon points="12.5,230.0 429.0,470.5 609.1,366.5 192.6,126.0" fill="#9DAE6B" stroke="#6F7E47" stroke-width="0.5"/><line x1="12.5" y1="229.9" x2="192.6" y2="125.9" stroke="#54622F" stroke-width="0.3" opacity="0.25"/><line x1="46.2" y1="249.4" x2="226.4" y2="145.4" stroke="#54622F" stroke-width="0.3" opacity="0.25"/><line x1="80.0" y1="268.9" x2="260.1" y2="164.9" stroke="#54622F" stroke-width="0.3" opacity="0.25"/><line x1="113.8" y1="288.4" x2="293.9" y2="184.4" stroke="#54622F" stroke-width="0.3" opacity="0.25"/><line x1="147.5" y1="307.9" x2="327.7" y2="203.9" stroke="#54622F" stroke-width="0.3" opacity="0.25"/><line x1="181.3" y1="327.4" x2="361.5" y2="223.4" stroke="#54622F" stroke-width="0.3" opacity="0.25"/><line x1="215.1" y1="346.9" x2="395.2" y2="242.9" stroke="#54622F" stroke-width="0.3" opacity="0.25"/><line x1="248.9" y1="366.4" x2="429.0" y2="262.4" stroke="#54622F" stroke-width="0.3" opacity="0.25"/><line x1="282.6" y1="385.9" x2="462.8" y2="281.9" stroke="#54622F" stroke-width="0.3" opacity="0.25"/><line x1="316.4" y1="405.4" x2="496.6" y2="301.4" stroke="#54622F" stroke-width="0.3" opacity="0.25"/><line x1="350.2" y1="424.9" x2="530.3" y2="320.9" stroke="#54622F" stroke-width="0.3" opacity="0.25"/><line x1="384.0" y1="444.4" x2="564.1" y2="340.4" stroke="#54622F" stroke-width="0.3" opacity="0.25"/><line x1="417.7" y1="463.9" x2="597.9" y2="359.9" stroke="#54622F" stroke-width="0.3" opacity="0.25"/><polygon points="91.3,210.2 474.0,431.2 586.6,366.2 203.8,145.2" fill="#54622F" opacity="0.25"/><line x1="192.6" y1="139.0" x2="192.6" y2="105.2" stroke="#5A4528" stroke-width="1.8"/><ellipse cx="192.6" cy="96.2" rx="9" ry="10.35" fill="#6F7E47" stroke="#54622F" stroke-width="0.5"/><line x1="265.8" y1="174.8" x2="265.8" y2="143.6" stroke="#5A4528" stroke-width="1.8"/><ellipse cx="265.8" cy="135.6" rx="8" ry="9.2" fill="#54622F" stroke="#54622F" stroke-width="0.5"/><line x1="355.8" y1="226.8" x2="355.8" y2="191.7" stroke="#5A4528" stroke-width="1.8"/><ellipse cx="355.8" cy="182.7" rx="9" ry="10.35" fill="#6F7E47" stroke="#54622F" stroke-width="0.5"/><line x1="440.3" y1="282.0" x2="440.3" y2="249.5" stroke="#5A4528" stroke-width="1.8"/><ellipse cx="440.3" cy="241.5" rx="8" ry="9.2" fill="#849655" stroke="#54622F" stroke-width="0.5"/><line x1="536.0" y1="330.8" x2="536.0" y2="296.9" stroke="#5A4528" stroke-width="1.8"/><ellipse cx="536.0" cy="287.9" rx="9" ry="10.35" fill="#54622F" stroke="#54622F" stroke-width="0.5"/><line x1="552.8" y1="386.0" x2="552.8" y2="353.5" stroke="#5A4528" stroke-width="1.8"/><ellipse cx="552.8" cy="345.5" rx="8" ry="9.2" fill="#6F7E47" stroke="#54622F" stroke-width="0.5"/><line x1="496.6" y1="418.5" x2="496.6" y2="387.3" stroke="#5A4528" stroke-width="1.8"/><ellipse cx="496.6" cy="379.3" rx="8" ry="9.2" fill="#54622F" stroke="#54622F" stroke-width="0.5"/><polygon points="451.5,353.5 507.8,386.0 507.8,344.4 451.5,311.9" fill="#F1E8D4" stroke="#6B5538" stroke-width="0.5"/><polygon points="507.8,386.0 552.8,360.0 552.8,318.4 507.8,344.4" fill="#D8C6A0" stroke="#6B5538" stroke-width="0.5"/><polygon points="451.5,353.5 496.6,327.5 496.6,285.9 451.5,311.9" fill="#A38760" stroke="#6B5538" stroke-width="0.5"/><polygon points="444.8,311.9 507.8,348.3 559.6,318.4 496.6,282.0" fill="#5A3324" stroke="#3D211A" stroke-width="0.5"/><polygon points="444.8,311.9 507.8,348.3 507.8,350.2 444.8,313.8" fill="#3D211A" stroke="none"/><polygon points="507.8,348.3 559.6,318.4 559.6,320.3 507.8,350.2" fill="#3D211A" stroke="none"/><polygon points="338.9,340.5 462.8,412.0 462.8,362.6 338.9,291.1" fill="#F1E8D4" stroke="#6B5538" stroke-width="0.5"/><polygon points="462.8,412.0 507.8,386.0 507.8,336.6 462.8,362.6" fill="#D8C6A0" stroke="#6B5538" stroke-width="0.5"/><polygon points="338.9,340.5 384.0,314.5 384.0,265.1 338.9,291.1" fill="#A38760" stroke="#6B5538" stroke-width="0.5"/><polygon points="384.0,314.5 451.5,353.5 451.5,304.1 384.0,265.1" fill="#D8C6A0" stroke="#6B5538" stroke-width="0.5"/><polygon points="344.6,330.8 389.6,356.8 389.6,326.8 344.6,300.8" fill="#5E7B8E" stroke="#6B4F2E" stroke-width="0.5" opacity="0.85"/><line x1="344.6" y1="315.8" x2="389.6" y2="341.8" stroke="#6B4F2E" stroke-width="0.4"/><polygon points="400.9,363.2 457.2,395.8 457.2,365.8 400.9,333.3" fill="#5E7B8E" stroke="#6B4F2E" stroke-width="0.5" opacity="0.85"/><line x1="400.9" y1="348.3" x2="457.2" y2="380.8" stroke="#6B4F2E" stroke-width="0.4"/><polygon points="113.8,210.5 293.9,314.5 293.9,265.1 113.8,161.1" fill="#F1E8D4" stroke="#6B5538" stroke-width="0.5"/><polygon points="293.9,314.5 361.5,275.5 361.5,226.1 293.9,265.1" fill="#D8C6A0" stroke="#6B5538" stroke-width="0.5"/><polygon points="181.3,171.5 361.5,275.5 361.5,226.1 181.3,122.1" fill="#D8C6A0" stroke="#6B5538" stroke-width="0.5"/><polygon points="118.3,207.9 291.7,308.0 291.7,265.1 118.3,165.0" fill="#A38760" stroke="none" opacity="0.4"/><polygon points="116.0,211.8 120.5,214.4 120.5,165.0 116.0,162.4" fill="#F1E8D4" stroke="#6B5538" stroke-width="0.5"/><polygon points="158.8,236.5 163.3,239.1 163.3,189.7 158.8,187.1" fill="#F1E8D4" stroke="#6B5538" stroke-width="0.5"/><polygon points="202.7,261.9 207.2,264.4 207.2,215.1 202.7,212.4" fill="#F1E8D4" stroke="#6B5538" stroke-width="0.5"/><polygon points="246.6,287.2 251.1,289.8 251.1,240.4 246.6,237.8" fill="#F1E8D4" stroke="#6B5538" stroke-width="0.5"/><polygon points="289.4,311.9 293.9,314.5 293.9,265.1 289.4,262.5" fill="#F1E8D4" stroke="#6B5538" stroke-width="0.5"/><line x1="113.8" y1="205.3" x2="293.9" y2="309.3" stroke="#6B5538" stroke-width="0.4"/><line x1="113.8" y1="163.1" x2="293.9" y2="267.1" stroke="#6B5538" stroke-width="0.4"/><line x1="338.9" y1="335.3" x2="462.8" y2="406.8" stroke="#6B5538" stroke-width="0.4"/><line x1="338.9" y1="293.0" x2="462.8" y2="364.5" stroke="#6B5538" stroke-width="0.4"/><polygon points="104.8,161.1 293.9,270.3 370.5,226.1 181.3,116.9" fill="#7A4738" stroke="#3D211A" stroke-width="0.5"/><polygon points="104.8,161.1 293.9,270.3 293.9,272.9 104.8,163.7" fill="#3D211A" stroke="none"/><polygon points="293.9,270.3 370.5,226.1 370.5,228.7 293.9,272.9" fill="#3D211A" stroke="none"/><polygon points="329.9,291.1 462.8,367.8 516.8,336.6 384.0,259.9" fill="#7A4738" stroke="#3D211A" stroke-width="0.5"/><polygon points="329.9,291.1 462.8,367.8 462.8,370.4 329.9,293.7" fill="#3D211A" stroke="none"/><polygon points="462.8,367.8 516.8,336.6 516.8,339.2 462.8,370.4" fill="#3D211A" stroke="none"/><polygon points="181.3,116.9 370.5,226.1 370.5,228.7 181.3,119.5" fill="#3D211A" stroke="none"/><polygon points="68.7,220.9 440.3,435.4 474.0,415.9 102.5,201.4" fill="#A37A4A" stroke="#6B4F2E" stroke-width="0.5"/><line x1="80.0" y1="227.3" x2="113.8" y2="207.8" stroke="#6B4F2E" stroke-width="0.3"/><line x1="91.3" y1="233.8" x2="125.0" y2="214.3" stroke="#6B4F2E" stroke-width="0.3"/><line x1="102.5" y1="240.3" x2="136.3" y2="220.8" stroke="#6B4F2E" stroke-width="0.3"/><line x1="113.8" y1="246.8" x2="147.5" y2="227.3" stroke="#6B4F2E" stroke-width="0.3"/><line x1="125.0" y1="253.3" x2="158.8" y2="233.8" stroke="#6B4F2E" stroke-width="0.3"/><line x1="136.3" y1="259.8" x2="170.1" y2="240.3" stroke="#6B4F2E" stroke-width="0.3"/><line x1="147.5" y1="266.3" x2="181.3" y2="246.8" stroke="#6B4F2E" stroke-width="0.3"/><line x1="158.8" y1="272.8" x2="192.6" y2="253.3" stroke="#6B4F2E" stroke-width="0.3"/><line x1="170.1" y1="279.3" x2="203.8" y2="259.8" stroke="#6B4F2E" stroke-width="0.3"/><line x1="181.3" y1="285.8" x2="215.1" y2="266.3" stroke="#6B4F2E" stroke-width="0.3"/><line x1="192.6" y1="292.3" x2="226.4" y2="272.8" stroke="#6B4F2E" stroke-width="0.3"/><line x1="203.8" y1="298.8" x2="237.6" y2="279.3" stroke="#6B4F2E" stroke-width="0.3"/><line x1="215.1" y1="305.3" x2="248.9" y2="285.8" stroke="#6B4F2E" stroke-width="0.3"/><line x1="226.4" y1="311.8" x2="260.1" y2="292.3" stroke="#6B4F2E" stroke-width="0.3"/><line x1="237.6" y1="318.3" x2="271.4" y2="298.8" stroke="#6B4F2E" stroke-width="0.3"/><line x1="248.9" y1="324.8" x2="282.6" y2="305.3" stroke="#6B4F2E" stroke-width="0.3"/><line x1="260.1" y1="331.3" x2="293.9" y2="311.8" stroke="#6B4F2E" stroke-width="0.3"/><line x1="271.4" y1="337.8" x2="305.2" y2="318.3" stroke="#6B4F2E" stroke-width="0.3"/><line x1="282.6" y1="344.3" x2="316.4" y2="324.8" stroke="#6B4F2E" stroke-width="0.3"/><line x1="293.9" y1="350.8" x2="327.7" y2="331.3" stroke="#6B4F2E" stroke-width="0.3"/><line x1="305.2" y1="357.3" x2="338.9" y2="337.8" stroke="#6B4F2E" stroke-width="0.3"/><line x1="316.4" y1="363.8" x2="350.2" y2="344.3" stroke="#6B4F2E" stroke-width="0.3"/><line x1="327.7" y1="370.3" x2="361.5" y2="350.8" stroke="#6B4F2E" stroke-width="0.3"/><line x1="338.9" y1="376.8" x2="372.7" y2="357.3" stroke="#6B4F2E" stroke-width="0.3"/><line x1="350.2" y1="383.3" x2="384.0" y2="363.8" stroke="#6B4F2E" stroke-width="0.3"/><line x1="361.5" y1="389.8" x2="395.2" y2="370.3" stroke="#6B4F2E" stroke-width="0.3"/><line x1="372.7" y1="396.3" x2="406.5" y2="376.8" stroke="#6B4F2E" stroke-width="0.3"/><line x1="384.0" y1="402.8" x2="417.7" y2="383.3" stroke="#6B4F2E" stroke-width="0.3"/><line x1="395.2" y1="409.3" x2="429.0" y2="389.8" stroke="#6B4F2E" stroke-width="0.3"/><line x1="406.5" y1="415.8" x2="440.3" y2="396.3" stroke="#6B4F2E" stroke-width="0.3"/><line x1="417.7" y1="422.3" x2="451.5" y2="402.8" stroke="#6B4F2E" stroke-width="0.3"/><line x1="429.0" y1="428.8" x2="462.8" y2="409.3" stroke="#6B4F2E" stroke-width="0.3"/><line x1="440.3" y1="435.3" x2="474.0" y2="415.8" stroke="#6B4F2E" stroke-width="0.3"/><polygon points="68.7,223.5 440.3,438.0 440.3,435.4 68.7,220.9" fill="#6B4F2E" stroke="none"/><polygon points="440.3,438.0 474.0,418.5 474.0,415.9 440.3,435.4" fill="#6B4F2E" stroke="none"/><polygon points="293.9,313.8 338.9,339.8 384.0,313.8 338.9,287.8" fill="#9DAE6B" stroke="#6F7E47" stroke-width="0.4"/><line x1="338.9" y1="314.5" x2="338.9" y2="275.5" stroke="#5A4528" stroke-width="1.8"/><ellipse cx="338.9" cy="265.5" rx="10" ry="11.5" fill="#54622F" stroke="#54622F" stroke-width="0.5"/><polygon points="384.0,313.7 451.5,352.7 496.6,326.7 429.0,287.7" fill="#6F7E47" stroke="#54622F" stroke-width="0.4"/><ellipse cx="130.7" cy="236.9" rx="6" ry="3.2" fill="#6B4F2E" stroke="#2C2418" stroke-width="0.4"/><circle cx="122.8" cy="232.3" r="2" fill="#A38760" stroke="#2C2418" stroke-width="0.3"/><circle cx="138.5" cy="241.4" r="2" fill="#A38760" stroke="#2C2418" stroke-width="0.3"/><circle cx="125.0" cy="240.1" r="2" fill="#A38760" stroke="#2C2418" stroke-width="0.3"/><circle cx="136.3" cy="233.6" r="2" fill="#A38760" stroke="#2C2418" stroke-width="0.3"/><ellipse cx="175.7" cy="262.9" rx="6" ry="3.2" fill="#6B4F2E" stroke="#2C2418" stroke-width="0.4"/><circle cx="167.8" cy="258.3" r="2" fill="#A38760" stroke="#2C2418" stroke-width="0.3"/><circle cx="183.6" cy="267.4" r="2" fill="#A38760" stroke="#2C2418" stroke-width="0.3"/><circle cx="170.1" cy="266.1" r="2" fill="#A38760" stroke="#2C2418" stroke-width="0.3"/><circle cx="181.3" cy="259.6" r="2" fill="#A38760" stroke="#2C2418" stroke-width="0.3"/><ellipse cx="220.7" cy="288.9" rx="6" ry="3.2" fill="#6B4F2E" stroke="#2C2418" stroke-width="0.4"/><circle cx="212.8" cy="284.3" r="2" fill="#A38760" stroke="#2C2418" stroke-width="0.3"/><circle cx="228.6" cy="293.4" r="2" fill="#A38760" stroke="#2C2418" stroke-width="0.3"/><circle cx="215.1" cy="292.1" r="2" fill="#A38760" stroke="#2C2418" stroke-width="0.3"/><circle cx="226.4" cy="285.6" r="2" fill="#A38760" stroke="#2C2418" stroke-width="0.3"/><ellipse cx="254.5" cy="308.4" rx="6" ry="3.2" fill="#6B4F2E" stroke="#2C2418" stroke-width="0.4"/><circle cx="246.6" cy="303.8" r="2" fill="#A38760" stroke="#2C2418" stroke-width="0.3"/><circle cx="262.4" cy="312.9" r="2" fill="#A38760" stroke="#2C2418" stroke-width="0.3"/><circle cx="248.9" cy="311.6" r="2" fill="#A38760" stroke="#2C2418" stroke-width="0.3"/><circle cx="260.1" cy="305.1" r="2" fill="#A38760" stroke="#2C2418" stroke-width="0.3"/><ellipse cx="344.6" cy="360.4" rx="6" ry="3.2" fill="#6B4F2E" stroke="#2C2418" stroke-width="0.4"/><circle cx="336.7" cy="355.8" r="2" fill="#A38760" stroke="#2C2418" stroke-width="0.3"/><circle cx="352.5" cy="364.9" r="2" fill="#A38760" stroke="#2C2418" stroke-width="0.3"/><circle cx="338.9" cy="363.6" r="2" fill="#A38760" stroke="#2C2418" stroke-width="0.3"/><circle cx="350.2" cy="357.1" r="2" fill="#A38760" stroke="#2C2418" stroke-width="0.3"/><ellipse cx="400.9" cy="392.9" rx="6" ry="3.2" fill="#6B4F2E" stroke="#2C2418" stroke-width="0.4"/><circle cx="393.0" cy="388.3" r="2" fill="#A38760" stroke="#2C2418" stroke-width="0.3"/><circle cx="408.7" cy="397.4" r="2" fill="#A38760" stroke="#2C2418" stroke-width="0.3"/><circle cx="395.2" cy="396.1" r="2" fill="#A38760" stroke="#2C2418" stroke-width="0.3"/><circle cx="406.5" cy="389.6" r="2" fill="#A38760" stroke="#2C2418" stroke-width="0.3"/><line x1="40.6" y1="226.8" x2="40.6" y2="195.6" stroke="#5A4528" stroke-width="1.8"/><ellipse cx="40.6" cy="187.6" rx="8" ry="9.2" fill="#6F7E47" stroke="#54622F" stroke-width="0.5"/><line x1="113.8" y1="275.5" x2="113.8" y2="243.0" stroke="#5A4528" stroke-width="1.8"/><ellipse cx="113.8" cy="234.0" rx="9" ry="10.35" fill="#54622F" stroke="#54622F" stroke-width="0.5"/><line x1="224.1" y1="341.8" x2="224.1" y2="308.0" stroke="#5A4528" stroke-width="1.8"/><ellipse cx="224.1" cy="299.0" rx="9" ry="10.35" fill="#6F7E47" stroke="#54622F" stroke-width="0.5"/><line x1="338.9" y1="405.5" x2="338.9" y2="373.0" stroke="#5A4528" stroke-width="1.8"/><ellipse cx="338.9" cy="365.0" rx="8" ry="9.2" fill="#849655" stroke="#54622F" stroke-width="0.5"/><line x1="440.3" y1="451.0" x2="440.3" y2="421.1" stroke="#5A4528" stroke-width="1.8"/><ellipse cx="440.3" cy="414.1" rx="7" ry="8.049999999999999" fill="#54622F" stroke="#54622F" stroke-width="0.5"/>
+      <g id="lotes-group"></g>
+    </svg>
+  </div>
+</div>
+
+<div class="toolbar">
+  <div class="filtros">
+    <button class="filtro-btn activo" data-filtro="todos">Todos</button>
+    <button class="filtro-btn" data-filtro="200"><span class="swatch" style="background:#B5C988"></span>USD 200</button>
+    <button class="filtro-btn" data-filtro="500"><span class="swatch" style="background:#7A9F5A"></span>USD 500</button>
+    <button class="filtro-btn" data-filtro="1000"><span class="swatch" style="background:#3B6D3B"></span>USD 1.000</button>
+    <button class="filtro-btn" data-filtro="5000"><span class="swatch" style="background:#D4A547"></span>USD 5.000</button>
+  </div>
+</div>
+
+<div class="stats-bar">
+  <div>
+    <div class="num"><span id="vendidos-num">0</span> / 250</div>
+    <div style="font-size:11px;color:var(--texto-suave)">lotes vendidos</div>
+  </div>
+  <div class="progress-wrap">
+    <div class="progress-fill" id="progress-fill"></div>
+  </div>
+  <div>
+    <div class="num">USD <span id="recaudado-num">0</span></div>
+    <div style="font-size:11px;color:var(--texto-suave)">recaudados</div>
+  </div>
+</div>
+
+<div class="zoom-controls">
+  <button class="zoom-btn" onclick="zoomIn()" title="Zoom +">+</button>
+  <button class="zoom-btn" onclick="zoomOut()" title="Zoom −">−</button>
+  <button class="zoom-btn" onclick="resetZoom()" title="Reset" style="font-size:12px">⌖</button>
+</div>
+
+<button class="ranking-toggle" onclick="toggleRanking()">APORTANTES</button>
+
+<div class="ranking-drawer" id="ranking">
+  <h3>Aportantes <button onclick="toggleRanking()" style="background:none;border:none;font-size:18px;cursor:pointer">×</button></h3>
+  <div id="ranking-list" style="padding: 8px 0;">
+    <div style="padding: 20px; text-align: center; color: var(--texto-suave); font-size: 13px;">
+      Sé el primero en colaborar
+    </div>
+  </div>
+</div>
+
+<footer class="footer">
+  <span>Mantené presionada la barra espaciadora y arrastrá para mover el mapa.</span>
+  <span style="margin-left:auto;color:var(--texto-suave);font-size:11px;">Prototipo · Coronel Suárez Rugby & Hockey Club</span>
+</footer>
+
+<div class="tooltip" id="tooltip"></div>
+
+<!-- LANDING OVERLAY (visible inicialmente) -->
+<div class="landing-overlay" id="landing">
+  <div class="landing-card">
+    <h1>Sumate al nuevo Club House</h1>
+    <p class="subtitle">Coronel Suárez Rugby & Hockey Club</p>
+    <p>El proyecto consiste en la construcción de la nueva sede social del club, con quincho para grandes eventos, bar, cocina y terraza, en un espacio pensado para reunir a las familias del rugby y el hockey de Coronel Suárez.</p>
+    <p>Cada metro cuadrado de la obra está representado por un <strong>lote</strong>. Adquiriendo uno de los 250 lotes, vas a estar dejando tu huella en la nueva casa del club.</p>
+    <div class="stats">
+      <div class="stat"><div class="num">250</div><div class="lbl">lotes totales</div></div>
+      <div class="stat"><div class="num">USD 200 a 5.000</div><div class="lbl">según ubicación</div></div>
+      <div class="stat"><div class="num">USD 142.900</div><div class="lbl">objetivo total</div></div>
+    </div>
+    <div class="actions">
+      <button class="btn-cta" onclick="cerrarLanding()" style="padding:10px 24px;font-size:14px">Comprar lote</button>
+      <button class="nav-link" onclick="abrirInfo('proyecto'); cerrarLanding()" style="color:var(--verde-rugby);background:white;border:1px solid var(--borde);padding:10px 24px;border-radius:4px">Ver proyecto</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DE COMPRA -->
+<div class="modal-overlay" id="modal-compra">
+  <div class="modal" id="modal-compra-content"></div>
+</div>
+
+<!-- INFO PAGES OVERLAY -->
+<div class="info-overlay" id="info-overlay">
+  <div class="info-panel-wrap">
+    <button class="close-x" onclick="cerrarInfo()" style="position:absolute;top:16px;right:20px;background:white;border:1px solid var(--borde);width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:18px;z-index:1">×</button>
+    <div class="info-panel" id="info-content"></div>
+  </div>
+</div>
+
+<script>
+
+const LOTES = [{"i":0,"z":"quincho","v":500,"p":[[113.8,161.1],[125.0,167.6],[136.3,161.1],[125.0,154.6]]},{"i":1,"z":"quincho","v":500,"p":[[125.0,154.6],[136.3,161.1],[147.5,154.6],[136.3,148.1]]},{"i":2,"z":"quincho","v":500,"p":[[136.3,148.1],[147.5,154.6],[158.8,148.1],[147.5,141.6]]},{"i":3,"z":"quincho","v":500,"p":[[147.5,141.6],[158.8,148.1],[170.1,141.6],[158.8,135.1]]},{"i":4,"z":"quincho","v":500,"p":[[158.8,135.1],[170.1,141.6],[181.3,135.1],[170.1,128.6]]},{"i":5,"z":"quincho","v":500,"p":[[170.1,128.6],[181.3,135.1],[192.6,128.6],[181.3,122.1]]},{"i":6,"z":"quincho","v":500,"p":[[125.0,167.6],[136.3,174.1],[147.5,167.6],[136.3,161.1]]},{"i":7,"z":"quincho","v":500,"p":[[136.3,161.1],[147.5,167.6],[158.8,161.1],[147.5,154.6]]},{"i":8,"z":"quincho","v":500,"p":[[147.5,154.6],[158.8,161.1],[170.1,154.6],[158.8,148.1]]},{"i":9,"z":"quincho","v":500,"p":[[158.8,148.1],[170.1,154.6],[181.3,148.1],[170.1,141.6]]},{"i":10,"z":"quincho","v":500,"p":[[170.1,141.6],[181.3,148.1],[192.6,141.6],[181.3,135.1]]},{"i":11,"z":"quincho","v":500,"p":[[181.3,135.1],[192.6,141.6],[203.8,135.1],[192.6,128.6]]},{"i":12,"z":"quincho","v":500,"p":[[147.5,167.6],[158.8,174.1],[170.1,167.6],[158.8,161.1]]},{"i":13,"z":"quincho","v":500,"p":[[158.8,161.1],[170.1,167.6],[181.3,161.1],[170.1,154.6]]},{"i":14,"z":"quincho","v":500,"p":[[170.1,154.6],[181.3,161.1],[192.6,154.6],[181.3,148.1]]},{"i":15,"z":"quincho","v":500,"p":[[181.3,148.1],[192.6,154.6],[203.8,148.1],[192.6,141.6]]},{"i":16,"z":"quincho","v":500,"p":[[192.6,141.6],[203.8,148.1],[215.1,141.6],[203.8,135.1]]},{"i":17,"z":"quincho","v":500,"p":[[147.5,180.6],[158.8,187.1],[170.1,180.6],[158.8,174.1]]},{"i":18,"z":"quincho","v":500,"p":[[158.8,174.1],[170.1,180.6],[181.3,174.1],[170.1,167.6]]},{"i":19,"z":"quincho","v":500,"p":[[170.1,167.6],[181.3,174.1],[192.6,167.6],[181.3,161.1]]},{"i":20,"z":"quincho","v":500,"p":[[181.3,161.1],[192.6,167.6],[203.8,161.1],[192.6,154.6]]},{"i":21,"z":"quincho","v":500,"p":[[192.6,154.6],[203.8,161.1],[215.1,154.6],[203.8,148.1]]},{"i":22,"z":"quincho","v":500,"p":[[203.8,148.1],[215.1,154.6],[226.4,148.1],[215.1,141.6]]},{"i":23,"z":"quincho","v":500,"p":[[158.8,187.1],[170.1,193.6],[181.3,187.1],[170.1,180.6]]},{"i":24,"z":"quincho","v":1000,"p":[[170.1,180.6],[181.3,187.1],[192.6,180.6],[181.3,174.1]]},{"i":25,"z":"quincho","v":1000,"p":[[181.3,174.1],[192.6,180.6],[203.8,174.1],[192.6,167.6]]},{"i":26,"z":"quincho","v":1000,"p":[[192.6,167.6],[203.8,174.1],[215.1,167.6],[203.8,161.1]]},{"i":27,"z":"quincho","v":1000,"p":[[203.8,161.1],[215.1,167.6],[226.4,161.1],[215.1,154.6]]},{"i":28,"z":"quincho","v":500,"p":[[215.1,154.6],[226.4,161.1],[237.6,154.6],[226.4,148.1]]},{"i":29,"z":"quincho","v":500,"p":[[170.1,193.6],[181.3,200.1],[192.6,193.6],[181.3,187.1]]},{"i":30,"z":"quincho","v":1000,"p":[[181.3,187.1],[192.6,193.6],[203.8,187.1],[192.6,180.6]]},{"i":31,"z":"quincho","v":1000,"p":[[192.6,180.6],[203.8,187.1],[215.1,180.6],[203.8,174.1]]},{"i":32,"z":"quincho","v":1000,"p":[[203.8,174.1],[215.1,180.6],[226.4,174.1],[215.1,167.6]]},{"i":33,"z":"quincho","v":1000,"p":[[215.1,167.6],[226.4,174.1],[237.6,167.6],[226.4,161.1]]},{"i":34,"z":"quincho","v":500,"p":[[226.4,161.1],[237.6,167.6],[248.9,161.1],[237.6,154.6]]},{"i":35,"z":"quincho","v":500,"p":[[181.3,200.1],[192.6,206.6],[203.8,200.1],[192.6,193.6]]},{"i":36,"z":"quincho","v":1000,"p":[[192.6,193.6],[203.8,200.1],[215.1,193.6],[203.8,187.1]]},{"i":37,"z":"quincho","v":5000,"p":[[203.8,187.1],[215.1,193.6],[226.4,187.1],[215.1,180.6]]},{"i":38,"z":"quincho","v":5000,"p":[[215.1,180.6],[226.4,187.1],[237.6,180.6],[226.4,174.1]]},{"i":39,"z":"quincho","v":1000,"p":[[226.4,174.1],[237.6,180.6],[248.9,174.1],[237.6,167.6]]},{"i":40,"z":"quincho","v":500,"p":[[237.6,167.6],[248.9,174.1],[260.1,167.6],[248.9,161.1]]},{"i":41,"z":"quincho","v":500,"p":[[192.6,206.6],[203.8,213.1],[215.1,206.6],[203.8,200.1]]},{"i":42,"z":"quincho","v":1000,"p":[[203.8,200.1],[215.1,206.6],[226.4,200.1],[215.1,193.6]]},{"i":43,"z":"quincho","v":5000,"p":[[215.1,193.6],[226.4,200.1],[237.6,193.6],[226.4,187.1]]},{"i":44,"z":"quincho","v":5000,"p":[[226.4,187.1],[237.6,193.6],[248.9,187.1],[237.6,180.6]]},{"i":45,"z":"quincho","v":1000,"p":[[237.6,180.6],[248.9,187.1],[260.1,180.6],[248.9,174.1]]},{"i":46,"z":"quincho","v":500,"p":[[248.9,174.1],[260.1,180.6],[271.4,174.1],[260.1,167.6]]},{"i":47,"z":"quincho","v":500,"p":[[203.8,213.1],[215.1,219.6],[226.4,213.1],[215.1,206.6]]},{"i":48,"z":"quincho","v":1000,"p":[[215.1,206.6],[226.4,213.1],[237.6,206.6],[226.4,200.1]]},{"i":49,"z":"quincho","v":5000,"p":[[226.4,200.1],[237.6,206.6],[248.9,200.1],[237.6,193.6]]},{"i":50,"z":"quincho","v":5000,"p":[[237.6,193.6],[248.9,200.1],[260.1,193.6],[248.9,187.1]]},{"i":51,"z":"quincho","v":500,"p":[[260.1,180.6],[271.4,187.1],[282.6,180.6],[271.4,174.1]]},{"i":52,"z":"quincho","v":500,"p":[[215.1,219.6],[226.4,226.1],[237.6,219.6],[226.4,213.1]]},{"i":53,"z":"quincho","v":1000,"p":[[226.4,213.1],[237.6,219.6],[248.9,213.1],[237.6,206.6]]},{"i":54,"z":"quincho","v":5000,"p":[[237.6,206.6],[248.9,213.1],[260.1,206.6],[248.9,200.1]]},{"i":55,"z":"quincho","v":1000,"p":[[260.1,193.6],[271.4,200.1],[282.6,193.6],[271.4,187.1]]},{"i":56,"z":"quincho","v":500,"p":[[271.4,187.1],[282.6,193.6],[293.9,187.1],[282.6,180.6]]},{"i":57,"z":"quincho","v":500,"p":[[226.4,226.1],[237.6,232.6],[248.9,226.1],[237.6,219.6]]},{"i":58,"z":"quincho","v":1000,"p":[[237.6,219.6],[248.9,226.1],[260.1,219.6],[248.9,213.1]]},{"i":59,"z":"quincho","v":1000,"p":[[248.9,213.1],[260.1,219.6],[271.4,213.1],[260.1,206.6]]},{"i":60,"z":"quincho","v":1000,"p":[[260.1,206.6],[271.4,213.1],[282.6,206.6],[271.4,200.1]]},{"i":61,"z":"quincho","v":1000,"p":[[271.4,200.1],[282.6,206.6],[293.9,200.1],[282.6,193.6]]},{"i":62,"z":"quincho","v":500,"p":[[282.6,193.6],[293.9,200.1],[305.2,193.6],[293.9,187.1]]},{"i":63,"z":"quincho","v":500,"p":[[237.6,232.6],[248.9,239.1],[260.1,232.6],[248.9,226.1]]},{"i":64,"z":"quincho","v":1000,"p":[[248.9,226.1],[260.1,232.6],[271.4,226.1],[260.1,219.6]]},{"i":65,"z":"quincho","v":1000,"p":[[260.1,219.6],[271.4,226.1],[282.6,219.6],[271.4,213.1]]},{"i":66,"z":"quincho","v":1000,"p":[[271.4,213.1],[282.6,219.6],[293.9,213.1],[282.6,206.6]]},{"i":67,"z":"quincho","v":1000,"p":[[282.6,206.6],[293.9,213.1],[305.2,206.6],[293.9,200.1]]},{"i":68,"z":"quincho","v":500,"p":[[248.9,239.1],[260.1,245.6],[271.4,239.1],[260.1,232.6]]},{"i":69,"z":"quincho","v":500,"p":[[260.1,232.6],[271.4,239.1],[282.6,232.6],[271.4,226.1]]},{"i":70,"z":"quincho","v":500,"p":[[271.4,226.1],[282.6,232.6],[293.9,226.1],[282.6,219.6]]},{"i":71,"z":"quincho","v":500,"p":[[282.6,219.6],[293.9,226.1],[305.2,219.6],[293.9,213.1]]},{"i":72,"z":"quincho","v":500,"p":[[293.9,213.1],[305.2,219.6],[316.4,213.1],[305.2,206.6]]},{"i":73,"z":"quincho","v":500,"p":[[305.2,206.6],[316.4,213.1],[327.7,206.6],[316.4,200.1]]},{"i":74,"z":"quincho","v":500,"p":[[260.1,245.6],[271.4,252.1],[282.6,245.6],[271.4,239.1]]},{"i":75,"z":"quincho","v":500,"p":[[271.4,239.1],[282.6,245.6],[293.9,239.1],[282.6,232.6]]},{"i":76,"z":"quincho","v":500,"p":[[282.6,232.6],[293.9,239.1],[305.2,232.6],[293.9,226.1]]},{"i":77,"z":"quincho","v":500,"p":[[293.9,226.1],[305.2,232.6],[316.4,226.1],[305.2,219.6]]},{"i":78,"z":"quincho","v":500,"p":[[305.2,219.6],[316.4,226.1],[327.7,219.6],[316.4,213.1]]},{"i":79,"z":"quincho","v":500,"p":[[316.4,213.1],[327.7,219.6],[338.9,213.1],[327.7,206.6]]},{"i":80,"z":"quincho","v":500,"p":[[271.4,252.1],[282.6,258.6],[293.9,252.1],[282.6,245.6]]},{"i":81,"z":"quincho","v":500,"p":[[282.6,245.6],[293.9,252.1],[305.2,245.6],[293.9,239.1]]},{"i":82,"z":"quincho","v":500,"p":[[293.9,239.1],[305.2,245.6],[316.4,239.1],[305.2,232.6]]},{"i":83,"z":"quincho","v":500,"p":[[305.2,232.6],[316.4,239.1],[327.7,232.6],[316.4,226.1]]},{"i":84,"z":"quincho","v":500,"p":[[316.4,226.1],[327.7,232.6],[338.9,226.1],[327.7,219.6]]},{"i":85,"z":"quincho","v":500,"p":[[327.7,219.6],[338.9,226.1],[350.2,219.6],[338.9,213.1]]},{"i":86,"z":"quincho","v":500,"p":[[282.6,258.6],[293.9,265.1],[305.2,258.6],[293.9,252.1]]},{"i":87,"z":"quincho","v":500,"p":[[293.9,252.1],[305.2,258.6],[316.4,252.1],[305.2,245.6]]},{"i":88,"z":"quincho","v":500,"p":[[305.2,245.6],[316.4,252.1],[327.7,245.6],[316.4,239.1]]},{"i":89,"z":"quincho","v":500,"p":[[316.4,239.1],[327.7,245.6],[338.9,239.1],[327.7,232.6]]},{"i":90,"z":"quincho","v":500,"p":[[327.7,232.6],[338.9,239.1],[350.2,232.6],[338.9,226.1]]},{"i":91,"z":"quincho","v":500,"p":[[338.9,226.1],[350.2,232.6],[361.5,226.1],[350.2,219.6]]},{"i":92,"z":"bar","v":500,"p":[[338.9,291.1],[350.2,297.6],[361.5,291.1],[350.2,284.6]]},{"i":93,"z":"bar","v":500,"p":[[350.2,284.6],[361.5,291.1],[372.7,284.6],[361.5,278.1]]},{"i":94,"z":"bar","v":500,"p":[[361.5,278.1],[372.7,284.6],[384.0,278.1],[372.7,271.6]]},{"i":95,"z":"bar","v":500,"p":[[372.7,271.6],[384.0,278.1],[395.2,271.6],[384.0,265.1]]},{"i":96,"z":"bar","v":500,"p":[[350.2,297.6],[361.5,304.1],[372.7,297.6],[361.5,291.1]]},{"i":97,"z":"bar","v":500,"p":[[361.5,291.1],[372.7,297.6],[384.0,291.1],[372.7,284.6]]},{"i":98,"z":"bar","v":500,"p":[[372.7,284.6],[384.0,291.1],[395.2,284.6],[384.0,278.1]]},{"i":99,"z":"bar","v":500,"p":[[384.0,278.1],[395.2,284.6],[406.5,278.1],[395.2,271.6]]},{"i":100,"z":"bar","v":500,"p":[[361.5,304.1],[372.7,310.6],[384.0,304.1],[372.7,297.6]]},{"i":101,"z":"bar","v":500,"p":[[372.7,297.6],[384.0,304.1],[395.2,297.6],[384.0,291.1]]},{"i":102,"z":"bar","v":500,"p":[[384.0,291.1],[395.2,297.6],[406.5,291.1],[395.2,284.6]]},{"i":103,"z":"bar","v":500,"p":[[395.2,284.6],[406.5,291.1],[417.7,284.6],[406.5,278.1]]},{"i":104,"z":"bar","v":500,"p":[[372.7,310.6],[384.0,317.1],[395.2,310.6],[384.0,304.1]]},{"i":105,"z":"bar","v":1000,"p":[[384.0,304.1],[395.2,310.6],[406.5,304.1],[395.2,297.6]]},{"i":106,"z":"bar","v":1000,"p":[[395.2,297.6],[406.5,304.1],[417.7,297.6],[406.5,291.1]]},{"i":107,"z":"bar","v":500,"p":[[406.5,291.1],[417.7,297.6],[429.0,291.1],[417.7,284.6]]},{"i":108,"z":"bar","v":500,"p":[[384.0,317.1],[395.2,323.6],[406.5,317.1],[395.2,310.6]]},{"i":109,"z":"bar","v":1000,"p":[[395.2,310.6],[406.5,317.1],[417.7,310.6],[406.5,304.1]]},{"i":110,"z":"bar","v":500,"p":[[417.7,297.6],[429.0,304.1],[440.3,297.6],[429.0,291.1]]},{"i":111,"z":"bar","v":500,"p":[[395.2,323.6],[406.5,330.1],[417.7,323.6],[406.5,317.1]]},{"i":112,"z":"bar","v":1000,"p":[[406.5,317.1],[417.7,323.6],[429.0,317.1],[417.7,310.6]]},{"i":113,"z":"bar","v":1000,"p":[[417.7,310.6],[429.0,317.1],[440.3,310.6],[429.0,304.1]]},{"i":114,"z":"bar","v":500,"p":[[429.0,304.1],[440.3,310.6],[451.5,304.1],[440.3,297.6]]},{"i":115,"z":"bar","v":500,"p":[[406.5,330.1],[417.7,336.6],[429.0,330.1],[417.7,323.6]]},{"i":116,"z":"bar","v":1000,"p":[[417.7,323.6],[429.0,330.1],[440.3,323.6],[429.0,317.1]]},{"i":117,"z":"bar","v":1000,"p":[[429.0,317.1],[440.3,323.6],[451.5,317.1],[440.3,310.6]]},{"i":118,"z":"bar","v":500,"p":[[440.3,310.6],[451.5,317.1],[462.8,310.6],[451.5,304.1]]},{"i":119,"z":"bar","v":500,"p":[[417.7,336.6],[429.0,343.1],[440.3,336.6],[429.0,330.1]]},{"i":120,"z":"bar","v":1000,"p":[[440.3,323.6],[451.5,330.1],[462.8,323.6],[451.5,317.1]]},{"i":121,"z":"bar","v":500,"p":[[451.5,317.1],[462.8,323.6],[474.0,317.1],[462.8,310.6]]},{"i":122,"z":"bar","v":500,"p":[[429.0,343.1],[440.3,349.6],[451.5,343.1],[440.3,336.6]]},{"i":123,"z":"bar","v":500,"p":[[440.3,336.6],[451.5,343.1],[462.8,336.6],[451.5,330.1]]},{"i":124,"z":"bar","v":500,"p":[[451.5,330.1],[462.8,336.6],[474.0,330.1],[462.8,323.6]]},{"i":125,"z":"bar","v":500,"p":[[462.8,323.6],[474.0,330.1],[485.3,323.6],[474.0,317.1]]},{"i":126,"z":"bar","v":500,"p":[[440.3,349.6],[451.5,356.1],[462.8,349.6],[451.5,343.1]]},{"i":127,"z":"bar","v":500,"p":[[451.5,343.1],[462.8,349.6],[474.0,343.1],[462.8,336.6]]},{"i":128,"z":"bar","v":500,"p":[[462.8,336.6],[474.0,343.1],[485.3,336.6],[474.0,330.1]]},{"i":129,"z":"bar","v":500,"p":[[474.0,330.1],[485.3,336.6],[496.6,330.1],[485.3,323.6]]},{"i":130,"z":"bar","v":500,"p":[[451.5,356.1],[462.8,362.6],[474.0,356.1],[462.8,349.6]]},{"i":131,"z":"bar","v":500,"p":[[462.8,349.6],[474.0,356.1],[485.3,349.6],[474.0,343.1]]},{"i":132,"z":"bar","v":500,"p":[[474.0,343.1],[485.3,349.6],[496.6,343.1],[485.3,336.6]]},{"i":133,"z":"bar","v":500,"p":[[485.3,336.6],[496.6,343.1],[507.8,336.6],[496.6,330.1]]},{"i":134,"z":"cocina","v":500,"p":[[462.8,305.4],[474.0,311.9],[485.3,305.4],[474.0,298.9]]},{"i":135,"z":"cocina","v":500,"p":[[474.0,298.9],[485.3,305.4],[496.6,298.9],[485.3,292.4]]},{"i":136,"z":"cocina","v":500,"p":[[485.3,292.4],[496.6,298.9],[507.8,292.4],[496.6,285.9]]},{"i":137,"z":"cocina","v":500,"p":[[462.8,318.4],[474.0,324.9],[485.3,318.4],[474.0,311.9]]},{"i":138,"z":"cocina","v":500,"p":[[474.0,311.9],[485.3,318.4],[496.6,311.9],[485.3,305.4]]},{"i":139,"z":"cocina","v":500,"p":[[485.3,305.4],[496.6,311.9],[507.8,305.4],[496.6,298.9]]},{"i":140,"z":"cocina","v":500,"p":[[496.6,298.9],[507.8,305.4],[519.1,298.9],[507.8,292.4]]},{"i":141,"z":"cocina","v":500,"p":[[474.0,324.9],[485.3,331.4],[496.6,324.9],[485.3,318.4]]},{"i":142,"z":"cocina","v":500,"p":[[485.3,318.4],[496.6,324.9],[507.8,318.4],[496.6,311.9]]},{"i":143,"z":"cocina","v":500,"p":[[496.6,311.9],[507.8,318.4],[519.1,311.9],[507.8,305.4]]},{"i":144,"z":"cocina","v":500,"p":[[507.8,305.4],[519.1,311.9],[530.3,305.4],[519.1,298.9]]},{"i":145,"z":"cocina","v":500,"p":[[485.3,331.4],[496.6,337.9],[507.8,331.4],[496.6,324.9]]},{"i":146,"z":"cocina","v":500,"p":[[496.6,324.9],[507.8,331.4],[519.1,324.9],[507.8,318.4]]},{"i":147,"z":"cocina","v":500,"p":[[507.8,318.4],[519.1,324.9],[530.3,318.4],[519.1,311.9]]},{"i":148,"z":"cocina","v":500,"p":[[519.1,311.9],[530.3,318.4],[541.6,311.9],[530.3,305.4]]},{"i":149,"z":"cocina","v":500,"p":[[496.6,337.9],[507.8,344.4],[519.1,337.9],[507.8,331.4]]},{"i":150,"z":"cocina","v":500,"p":[[507.8,331.4],[519.1,337.9],[530.3,331.4],[519.1,324.9]]},{"i":151,"z":"cocina","v":500,"p":[[519.1,324.9],[530.3,331.4],[541.6,324.9],[530.3,318.4]]},{"i":152,"z":"cocina","v":500,"p":[[530.3,318.4],[541.6,324.9],[552.8,318.4],[541.6,311.9]]},{"i":153,"z":"patio_mid","v":200,"p":[[293.9,313.7],[305.2,320.2],[316.4,313.7],[305.2,307.2]]},{"i":154,"z":"patio_mid","v":200,"p":[[305.2,307.2],[316.4,313.7],[327.7,307.2],[316.4,300.7]]},{"i":155,"z":"patio_mid","v":200,"p":[[316.4,300.7],[327.7,307.2],[338.9,300.7],[327.7,294.2]]},{"i":156,"z":"patio_mid","v":200,"p":[[327.7,294.2],[338.9,300.7],[350.2,294.2],[338.9,287.7]]},{"i":157,"z":"patio_mid","v":200,"p":[[305.2,320.2],[316.4,326.7],[327.7,320.2],[316.4,313.7]]},{"i":158,"z":"patio_mid","v":200,"p":[[316.4,313.7],[327.7,320.2],[338.9,313.7],[327.7,307.2]]},{"i":159,"z":"patio_mid","v":200,"p":[[327.7,307.2],[338.9,313.7],[350.2,307.2],[338.9,300.7]]},{"i":160,"z":"patio_mid","v":200,"p":[[338.9,300.7],[350.2,307.2],[361.5,300.7],[350.2,294.2]]},{"i":161,"z":"patio_mid","v":200,"p":[[316.4,326.7],[327.7,333.2],[338.9,326.7],[327.7,320.2]]},{"i":162,"z":"patio_mid","v":200,"p":[[327.7,320.2],[338.9,326.7],[350.2,320.2],[338.9,313.7]]},{"i":163,"z":"patio_mid","v":200,"p":[[338.9,313.7],[350.2,320.2],[361.5,313.7],[350.2,307.2]]},{"i":164,"z":"patio_mid","v":200,"p":[[350.2,307.2],[361.5,313.7],[372.7,307.2],[361.5,300.7]]},{"i":165,"z":"patio_mid","v":200,"p":[[327.7,333.2],[338.9,339.7],[350.2,333.2],[338.9,326.7]]},{"i":166,"z":"patio_mid","v":200,"p":[[338.9,326.7],[350.2,333.2],[361.5,326.7],[350.2,320.2]]},{"i":167,"z":"patio_mid","v":200,"p":[[350.2,320.2],[361.5,326.7],[372.7,320.2],[361.5,313.7]]},{"i":168,"z":"patio_mid","v":200,"p":[[361.5,313.7],[372.7,320.2],[384.0,313.7],[372.7,307.2]]},{"i":169,"z":"patio_coc","v":200,"p":[[384.0,313.7],[395.2,320.2],[406.5,313.7],[395.2,307.2]]},{"i":170,"z":"patio_coc","v":200,"p":[[395.2,307.2],[406.5,313.7],[417.7,307.2],[406.5,300.7]]},{"i":171,"z":"patio_coc","v":200,"p":[[406.5,300.7],[417.7,307.2],[429.0,300.7],[417.7,294.2]]},{"i":172,"z":"patio_coc","v":200,"p":[[417.7,294.2],[429.0,300.7],[440.3,294.2],[429.0,287.7]]},{"i":173,"z":"patio_coc","v":200,"p":[[395.2,320.2],[406.5,326.7],[417.7,320.2],[406.5,313.7]]},{"i":174,"z":"patio_coc","v":200,"p":[[406.5,313.7],[417.7,320.2],[429.0,313.7],[417.7,307.2]]},{"i":175,"z":"patio_coc","v":200,"p":[[417.7,307.2],[429.0,313.7],[440.3,307.2],[429.0,300.7]]},{"i":176,"z":"patio_coc","v":200,"p":[[429.0,300.7],[440.3,307.2],[451.5,300.7],[440.3,294.2]]},{"i":177,"z":"patio_coc","v":200,"p":[[406.5,326.7],[417.7,333.2],[429.0,326.7],[417.7,320.2]]},{"i":178,"z":"patio_coc","v":200,"p":[[417.7,320.2],[429.0,326.7],[440.3,320.2],[429.0,313.7]]},{"i":179,"z":"patio_coc","v":200,"p":[[429.0,313.7],[440.3,320.2],[451.5,313.7],[440.3,307.2]]},{"i":180,"z":"patio_coc","v":200,"p":[[440.3,307.2],[451.5,313.7],[462.8,307.2],[451.5,300.7]]},{"i":181,"z":"patio_coc","v":200,"p":[[417.7,333.2],[429.0,339.7],[440.3,333.2],[429.0,326.7]]},{"i":182,"z":"patio_coc","v":200,"p":[[429.0,326.7],[440.3,333.2],[451.5,326.7],[440.3,320.2]]},{"i":183,"z":"patio_coc","v":200,"p":[[440.3,320.2],[451.5,326.7],[462.8,320.2],[451.5,313.7]]},{"i":184,"z":"patio_coc","v":200,"p":[[451.5,313.7],[462.8,320.2],[474.0,313.7],[462.8,307.2]]},{"i":185,"z":"patio_coc","v":200,"p":[[429.0,339.7],[440.3,346.2],[451.5,339.7],[440.3,333.2]]},{"i":186,"z":"patio_coc","v":200,"p":[[440.3,333.2],[451.5,339.7],[462.8,333.2],[451.5,326.7]]},{"i":187,"z":"patio_coc","v":200,"p":[[451.5,326.7],[462.8,333.2],[474.0,326.7],[462.8,320.2]]},{"i":188,"z":"patio_coc","v":200,"p":[[462.8,320.2],[474.0,326.7],[485.3,320.2],[474.0,313.7]]},{"i":189,"z":"patio_coc","v":200,"p":[[440.3,346.2],[451.5,352.7],[462.8,346.2],[451.5,339.7]]},{"i":190,"z":"patio_coc","v":200,"p":[[451.5,339.7],[462.8,346.2],[474.0,339.7],[462.8,333.2]]},{"i":191,"z":"patio_coc","v":200,"p":[[462.8,333.2],[474.0,339.7],[485.3,333.2],[474.0,326.7]]},{"i":192,"z":"patio_coc","v":200,"p":[[474.0,326.7],[485.3,333.2],[496.6,326.7],[485.3,320.2]]},{"i":193,"z":"deck","v":200,"p":[[80.0,227.3],[91.3,233.8],[102.5,227.3],[91.3,220.8]]},{"i":194,"z":"deck","v":200,"p":[[91.3,220.8],[102.5,227.3],[113.8,220.8],[102.5,214.3]]},{"i":195,"z":"deck","v":200,"p":[[102.5,214.3],[113.8,220.8],[125.0,214.3],[113.8,207.8]]},{"i":196,"z":"deck","v":200,"p":[[91.3,233.8],[102.5,240.3],[113.8,233.8],[102.5,227.3]]},{"i":197,"z":"deck","v":200,"p":[[102.5,227.3],[113.8,233.8],[125.0,227.3],[113.8,220.8]]},{"i":198,"z":"deck","v":200,"p":[[113.8,220.8],[125.0,227.3],[136.3,220.8],[125.0,214.3]]},{"i":199,"z":"deck","v":200,"p":[[102.5,240.3],[113.8,246.8],[125.0,240.3],[113.8,233.8]]},{"i":200,"z":"deck","v":200,"p":[[113.8,246.8],[125.0,253.3],[136.3,246.8],[125.0,240.3]]},{"i":201,"z":"deck","v":200,"p":[[125.0,253.3],[136.3,259.8],[147.5,253.3],[136.3,246.8]]},{"i":202,"z":"deck","v":200,"p":[[136.3,259.8],[147.5,266.3],[158.8,259.8],[147.5,253.3]]},{"i":203,"z":"deck","v":200,"p":[[147.5,253.3],[158.8,259.8],[170.1,253.3],[158.8,246.8]]},{"i":204,"z":"deck","v":200,"p":[[158.8,246.8],[170.1,253.3],[181.3,246.8],[170.1,240.3]]},{"i":205,"z":"deck","v":200,"p":[[147.5,266.3],[158.8,272.8],[170.1,266.3],[158.8,259.8]]},{"i":206,"z":"deck","v":200,"p":[[158.8,272.8],[170.1,279.3],[181.3,272.8],[170.1,266.3]]},{"i":207,"z":"deck","v":200,"p":[[170.1,279.3],[181.3,285.8],[192.6,279.3],[181.3,272.8]]},{"i":208,"z":"deck","v":200,"p":[[181.3,285.8],[192.6,292.3],[203.8,285.8],[192.6,279.3]]},{"i":209,"z":"deck","v":200,"p":[[192.6,279.3],[203.8,285.8],[215.1,279.3],[203.8,272.8]]},{"i":210,"z":"deck","v":200,"p":[[203.8,272.8],[215.1,279.3],[226.4,272.8],[215.1,266.3]]},{"i":211,"z":"deck","v":200,"p":[[192.6,292.3],[203.8,298.8],[215.1,292.3],[203.8,285.8]]},{"i":212,"z":"deck","v":200,"p":[[203.8,298.8],[215.1,305.3],[226.4,298.8],[215.1,292.3]]},{"i":213,"z":"deck","v":200,"p":[[215.1,305.3],[226.4,311.8],[237.6,305.3],[226.4,298.8]]},{"i":214,"z":"deck","v":200,"p":[[226.4,311.8],[237.6,318.3],[248.9,311.8],[237.6,305.3]]},{"i":215,"z":"deck","v":200,"p":[[237.6,318.3],[248.9,324.8],[260.1,318.3],[248.9,311.8]]},{"i":216,"z":"deck","v":200,"p":[[248.9,324.8],[260.1,331.3],[271.4,324.8],[260.1,318.3]]},{"i":217,"z":"deck","v":200,"p":[[260.1,331.3],[271.4,337.8],[282.6,331.3],[271.4,324.8]]},{"i":218,"z":"deck","v":200,"p":[[271.4,324.8],[282.6,331.3],[293.9,324.8],[282.6,318.3]]},{"i":219,"z":"deck","v":200,"p":[[282.6,318.3],[293.9,324.8],[305.2,318.3],[293.9,311.8]]},{"i":220,"z":"deck","v":200,"p":[[271.4,337.8],[282.6,344.3],[293.9,337.8],[282.6,331.3]]},{"i":221,"z":"deck","v":200,"p":[[282.6,331.3],[293.9,337.8],[305.2,331.3],[293.9,324.8]]},{"i":222,"z":"deck","v":200,"p":[[293.9,324.8],[305.2,331.3],[316.4,324.8],[305.2,318.3]]},{"i":223,"z":"deck","v":200,"p":[[282.6,344.3],[293.9,350.8],[305.2,344.3],[293.9,337.8]]},{"i":224,"z":"deck","v":200,"p":[[293.9,337.8],[305.2,344.3],[316.4,337.8],[305.2,331.3]]},{"i":225,"z":"deck","v":200,"p":[[305.2,331.3],[316.4,337.8],[327.7,331.3],[316.4,324.8]]},{"i":226,"z":"deck","v":200,"p":[[293.9,350.8],[305.2,357.3],[316.4,350.8],[305.2,344.3]]},{"i":227,"z":"deck","v":200,"p":[[305.2,344.3],[316.4,350.8],[327.7,344.3],[316.4,337.8]]},{"i":228,"z":"deck","v":200,"p":[[316.4,337.8],[327.7,344.3],[338.9,337.8],[327.7,331.3]]},{"i":229,"z":"deck","v":200,"p":[[305.2,357.3],[316.4,363.8],[327.7,357.3],[316.4,350.8]]},{"i":230,"z":"deck","v":200,"p":[[316.4,350.8],[327.7,357.3],[338.9,350.8],[327.7,344.3]]},{"i":231,"z":"deck","v":200,"p":[[327.7,344.3],[338.9,350.8],[350.2,344.3],[338.9,337.8]]},{"i":232,"z":"deck","v":200,"p":[[316.4,363.8],[327.7,370.3],[338.9,363.8],[327.7,357.3]]},{"i":233,"z":"deck","v":200,"p":[[327.7,370.3],[338.9,376.8],[350.2,370.3],[338.9,363.8]]},{"i":234,"z":"deck","v":200,"p":[[338.9,376.8],[350.2,383.3],[361.5,376.8],[350.2,370.3]]},{"i":235,"z":"deck","v":200,"p":[[350.2,383.3],[361.5,389.8],[372.7,383.3],[361.5,376.8]]},{"i":236,"z":"deck","v":200,"p":[[361.5,376.8],[372.7,383.3],[384.0,376.8],[372.7,370.3]]},{"i":237,"z":"deck","v":200,"p":[[372.7,370.3],[384.0,376.8],[395.2,370.3],[384.0,363.8]]},{"i":238,"z":"deck","v":200,"p":[[361.5,389.8],[372.7,396.3],[384.0,389.8],[372.7,383.3]]},{"i":239,"z":"deck","v":200,"p":[[372.7,383.3],[384.0,389.8],[395.2,383.3],[384.0,376.8]]},{"i":240,"z":"deck","v":200,"p":[[384.0,376.8],[395.2,383.3],[406.5,376.8],[395.2,370.3]]},{"i":241,"z":"deck","v":200,"p":[[372.7,396.3],[384.0,402.8],[395.2,396.3],[384.0,389.8]]},{"i":242,"z":"deck","v":200,"p":[[384.0,402.8],[395.2,409.3],[406.5,402.8],[395.2,396.3]]},{"i":243,"z":"deck","v":200,"p":[[395.2,409.3],[406.5,415.8],[417.7,409.3],[406.5,402.8]]},{"i":244,"z":"deck","v":200,"p":[[406.5,415.8],[417.7,422.3],[429.0,415.8],[417.7,409.3]]},{"i":245,"z":"deck","v":200,"p":[[417.7,409.3],[429.0,415.8],[440.3,409.3],[429.0,402.8]]},{"i":246,"z":"deck","v":200,"p":[[429.0,402.8],[440.3,409.3],[451.5,402.8],[440.3,396.3]]},{"i":247,"z":"deck","v":200,"p":[[417.7,422.3],[429.0,428.8],[440.3,422.3],[429.0,415.8]]},{"i":248,"z":"deck","v":200,"p":[[429.0,415.8],[440.3,422.3],[451.5,415.8],[440.3,409.3]]},{"i":249,"z":"deck","v":200,"p":[[440.3,409.3],[451.5,415.8],[462.8,409.3],[451.5,402.8]]}];
+const PRECIOS = {200: 'USD 200', 500: 'USD 500', 1000: 'USD 1.000', 5000: 'USD 5.000'};
+const COLORES = {
+  200: {fill:'#B5C988', stroke:'#5A6F35'},
+  500: {fill:'#7A9F5A', stroke:'#3B5A22'},
+  1000:{fill:'#3B6D3B', stroke:'#1B4D2E'},
+  5000:{fill:'#D4A547', stroke:'#7C5A14'}
+};
+
+// Estado: cada lote puede ser 'disponible', 'reservado', 'vendido'
+const estado = LOTES.map(() => ({status: 'disponible', nombre: '', valor: 0}));
+const aportantes = []; // {nombre, monto, lotes}
+
+let filtroActual = 'todos';
+let zoom = 1;
+let panX = 0, panY = 0;
+let dragging = false;
+let lastX, lastY;
+let spaceDown = false;
+
+// ===== RENDER DE LOTES =====
+const grupo = document.getElementById('lotes-group');
+
+function renderLotes() {
+  grupo.innerHTML = '';
+  LOTES.forEach((l, i) => {
+    const e = estado[i];
+    const c = COLORES[l.v];
+    const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    poly.setAttribute('points', l.p.map(p => p.join(',')).join(' '));
+    poly.setAttribute('class', 'lote');
+    poly.dataset.idx = i;
+    poly.dataset.valor = l.v;
+    
+    if (e.status === 'vendido') {
+      poly.setAttribute('fill', c.fill);
+      poly.setAttribute('stroke', '#0F3520');
+      poly.setAttribute('stroke-width', '1.2');
+      poly.setAttribute('opacity', '1');
+    } else if (e.status === 'reservado') {
+      poly.setAttribute('fill', c.fill);
+      poly.setAttribute('stroke', c.stroke);
+      poly.setAttribute('stroke-width', '0.5');
+      poly.setAttribute('opacity', '0.6');
+      poly.setAttribute('stroke-dasharray', '2,1');
+    } else {
+      poly.setAttribute('fill', c.fill);
+      poly.setAttribute('stroke', c.stroke);
+      poly.setAttribute('stroke-width', '0.4');
+      poly.setAttribute('opacity', '0.55');
+    }
+    
+    if (filtroActual !== 'todos' && String(l.v) !== filtroActual) {
+      poly.classList.add('dim');
+    }
+    
+    poly.addEventListener('click', e => {
+      e.stopPropagation();
+      if (estado[i].status === 'vendido' || estado[i].status === 'reservado') return;
+      abrirCompra(i);
+    });
+    poly.addEventListener('mouseenter', e => mostrarTooltip(e, i));
+    poly.addEventListener('mouseleave', ocultarTooltip);
+    poly.addEventListener('mousemove', e => moverTooltip(e));
+    
+    grupo.appendChild(poly);
+  });
+  actualizarStats();
+}
+
+function actualizarStats() {
+  const vendidos = estado.filter(e => e.status === 'vendido').length;
+  const recaudado = estado.reduce((sum, e) => sum + (e.status === 'vendido' ? e.valor : 0), 0);
+  document.getElementById('vendidos-num').textContent = vendidos;
+  document.getElementById('recaudado-num').textContent = recaudado.toLocaleString('es-AR');
+  document.getElementById('progress-fill').style.width = (recaudado / 142900 * 100) + '%';
+  // Ranking
+  const list = document.getElementById('ranking-list');
+  if (aportantes.length === 0) {
+    list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--texto-suave);font-size:13px">Sé el primero en colaborar</div>';
+  } else {
+    const sorted = [...aportantes].sort((a, b) => b.monto - a.monto);
+    list.innerHTML = sorted.map(a => `
+      <div class="ranking-item">
+        <div>
+          <div class="nombre">${escapeHTML(a.nombre)}</div>
+          <div style="font-size:11px;color:var(--texto-suave)">${a.lotes} lote${a.lotes>1?'s':''}</div>
+        </div>
+        <div class="monto">USD ${a.monto.toLocaleString('es-AR')}</div>
+      </div>
+    `).join('');
+  }
+}
+
+function escapeHTML(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ===== TOOLTIP =====
+const tooltip = document.getElementById('tooltip');
+function mostrarTooltip(e, i) {
+  const lote = LOTES[i];
+  const est = estado[i];
+  let html = `Lote #${i+1} · <span class="price">${PRECIOS[lote.v]}</span>`;
+  if (est.status === 'vendido') html += ` · ${escapeHTML(est.nombre || 'Vendido')}`;
+  else if (est.status === 'reservado') html += ' · Reservado';
+  tooltip.innerHTML = html;
+  tooltip.classList.add('show');
+  moverTooltip(e);
+}
+function moverTooltip(e) {
+  tooltip.style.left = e.clientX + 'px';
+  tooltip.style.top = (e.clientY - 8) + 'px';
+}
+function ocultarTooltip() { tooltip.classList.remove('show'); }
+
+// ===== FILTROS =====
+document.querySelectorAll('.filtro-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('activo'));
+    btn.classList.add('activo');
+    filtroActual = btn.dataset.filtro;
+    renderLotes();
+  });
+});
+
+// ===== PAN & ZOOM =====
+const wrap = document.getElementById('mapa-wrap');
+const mapa = document.getElementById('mapa');
+
+function actualizarTransform() {
+  wrap.style.transform = `translate(calc(-50% + ${panX}px), calc(-50% + ${panY}px)) scale(${zoom})`;
+}
+function zoomIn() { zoom = Math.min(zoom * 1.25, 4); wrap.classList.remove('no-anim'); actualizarTransform(); }
+function zoomOut() { zoom = Math.max(zoom / 1.25, 0.6); wrap.classList.remove('no-anim'); actualizarTransform(); }
+function resetZoom() { zoom = 1; panX = 0; panY = 0; wrap.classList.remove('no-anim'); actualizarTransform(); }
+
+mapa.addEventListener('wheel', e => {
+  e.preventDefault();
+  const delta = -e.deltaY * 0.0015;
+  zoom = Math.max(0.6, Math.min(4, zoom * (1 + delta)));
+  wrap.classList.add('no-anim');
+  actualizarTransform();
+}, {passive: false});
+
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' && !spaceDown && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+    spaceDown = true; e.preventDefault();
+    mapa.style.cursor = 'grab';
+  }
+});
+document.addEventListener('keyup', e => {
+  if (e.code === 'Space') { spaceDown = false; mapa.style.cursor = 'default'; }
+});
+
+mapa.addEventListener('mousedown', e => {
+  if (spaceDown || e.target === mapa) {
+    dragging = true; lastX = e.clientX; lastY = e.clientY;
+    mapa.classList.add('grabbing');
+    wrap.classList.add('no-anim');
+    e.preventDefault();
+  }
+});
+document.addEventListener('mousemove', e => {
+  if (dragging) {
+    panX += e.clientX - lastX;
+    panY += e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    actualizarTransform();
+  }
+});
+document.addEventListener('mouseup', () => {
+  dragging = false;
+  mapa.classList.remove('grabbing');
+});
+
+// Touch support
+let lastTouchDist = 0;
+mapa.addEventListener('touchstart', e => {
+  if (e.touches.length === 1) {
+    dragging = true; lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
+    wrap.classList.add('no-anim');
+  } else if (e.touches.length === 2) {
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    lastTouchDist = Math.sqrt(dx*dx + dy*dy);
+  }
+});
+mapa.addEventListener('touchmove', e => {
+  if (e.touches.length === 1 && dragging) {
+    panX += e.touches[0].clientX - lastX;
+    panY += e.touches[0].clientY - lastY;
+    lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
+    actualizarTransform();
+  } else if (e.touches.length === 2) {
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    const d = Math.sqrt(dx*dx + dy*dy);
+    if (lastTouchDist) {
+      zoom = Math.max(0.6, Math.min(4, zoom * (d / lastTouchDist)));
+      actualizarTransform();
+    }
+    lastTouchDist = d;
+  }
+  e.preventDefault();
+}, {passive: false});
+mapa.addEventListener('touchend', () => { dragging = false; lastTouchDist = 0; });
+
+// ===== LANDING =====
+function cerrarLanding() {
+  document.getElementById('landing').style.opacity = 0;
+  setTimeout(() => document.getElementById('landing').style.display = 'none', 400);
+}
+
+// ===== INFO PAGES =====
+const PAGINAS = {
+  proyecto: {
+    titulo: 'El proyecto',
+    subtitulo: 'Nueva sede del Coronel Suárez Rugby & Hockey Club',
+    contenido: `
+      <p>El Coronel Suárez Rugby & Hockey Club está construyendo su nueva sede social, un espacio pensado para que socios, jugadores y familias del club tengan un lugar de encuentro a la altura de su historia.</p>
+      
+      <h3>El Club House</h3>
+      <p>El proyecto incluye:</p>
+      <ul>
+        <li><strong>Quincho</strong> con capacidad para más de 100 personas, ideal para terceros tiempos, asados y eventos.</li>
+        <li><strong>Bar y cocina</strong> equipados, con barra y zona de servicio.</li>
+        <li><strong>Terraza techada</strong> al frente, conectando los espacios y abriéndose al pulmón del club.</li>
+        <li><strong>Terraza descubierta</strong> con vista a las canchas, para los días al sol.</li>
+        <li><strong>Sala de reuniones, baños unisex y depósito de hockey.</strong></li>
+      </ul>
+      
+      <h3>Cómo colaborar</h3>
+      <p>La obra se financia mediante la venta de 250 lotes, distribuidos sobre el plano del proyecto. Cada lote tiene un valor según su ubicación:</p>
+      <ul>
+        <li><strong>USD 5.000</strong> — lotes premium, en el corazón del quincho</li>
+        <li><strong>USD 1.000</strong> — lotes destacados sobre techos</li>
+        <li><strong>USD 500</strong> — lotes en techos y zonas principales</li>
+        <li><strong>USD 200</strong> — lotes en deck, patios y exteriores</li>
+      </ul>
+      
+      <p>Cada aportante puede elegir un nombre que figurará públicamente en el lote, dejando una marca permanente en la nueva casa del club.</p>
+    `
+  },
+  faq: {
+    titulo: 'Preguntas frecuentes',
+    subtitulo: 'Todo lo que necesitás saber',
+    contenido: `
+      <div class="faq-item">
+        <div class="faq-q">¿Quiénes pueden colaborar?</div>
+        <div class="faq-a">Cualquier persona física o jurídica puede aportar al proyecto. No es necesario ser socio del club.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">¿Qué formas de pago hay disponibles?</div>
+        <div class="faq-a">Podés pagar en efectivo (en pesos al tipo de cambio del día), por transferencia bancaria (en pesos o dólares) o mediante pago online a través de Mercado Pago.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">¿Cómo funciona la reserva de un lote?</div>
+        <div class="faq-a">Al elegir un lote, se reserva por 7 días hábiles. Durante ese plazo el aportante coordina la forma de pago. Si no se concreta, la reserva se libera y el lote vuelve a estar disponible.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">¿Se puede pagar en cuotas?</div>
+        <div class="faq-a">Sí, hasta en 3 cuotas mensuales. El saldo pendiente queda expresado en dólares y se ajusta a la cotización vigente al momento de cada pago.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">¿Hay devolución del dinero?</div>
+        <div class="faq-a">No. Una vez concretada la donación, el aporte se destina a la obra y no se realizan devoluciones.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">¿Mi nombre aparece públicamente?</div>
+        <div class="faq-a">Si vos querés, sí. Al hacer la reserva podés elegir el nombre con el que figurarás en el lote, o seleccionar "Aporte anónimo" si preferís no identificarte.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">¿Cómo me contacto con el club?</div>
+        <div class="faq-a">Por mail a clubhouse@csrhc.com.ar o por teléfono al (02926) 15-XXXXX.</div>
+      </div>
+    `
+  },
+  club: {
+    titulo: 'Coronel Suárez Rugby & Hockey Club',
+    subtitulo: 'Nuestra historia',
+    contenido: `
+      <p>El Coronel Suárez Rugby & Hockey Club es una institución deportiva del sudoeste bonaerense, fundada con el objetivo de promover el rugby, el hockey y los valores de compañerismo, esfuerzo y respeto que estos deportes representan.</p>
+      
+      <h3>Nuestros deportes</h3>
+      <p>El club cuenta con divisiones de rugby (masculino, infantiles y juveniles) y hockey (femenino y masculino, en todas sus categorías), participando en los torneos regionales más importantes.</p>
+      
+      <h3>La nueva sede</h3>
+      <p>Después de años de crecimiento, el club da el salto a una nueva sede que va a permitir albergar a la creciente comunidad de socios, jugadores y familias. La construcción del nuevo Club House es el primer paso de un plan más amplio de infraestructura.</p>
+      
+      <p style="font-style: italic; color: var(--texto-suave); margin-top: 24px;">
+        El club agradece profundamente a cada persona que se suma con su aporte. La nueva casa la construimos entre todos.
+      </p>
+    `
+  },
+  contacto: {
+    titulo: 'Contacto',
+    subtitulo: 'Estamos para responderte',
+    contenido: `
+      <p>Para consultas sobre el proyecto, los lotes, formas de pago o cualquier otra duda:</p>
+      
+      <div style="background: var(--crema); padding: 20px; border-radius: 6px; margin: 20px 0;">
+        <p style="margin-bottom: 8px;"><strong>Email:</strong> clubhouse@csrhc.com.ar</p>
+        <p style="margin-bottom: 8px;"><strong>Teléfono:</strong> (02926) 15-XXXXX</p>
+        <p style="margin-bottom: 0;"><strong>Dirección:</strong> Coronel Suárez, Buenos Aires</p>
+      </div>
+      
+      <h3>Dejanos un mensaje</h3>
+      <form id="form-contacto" onsubmit="enviarContacto(event)">
+        <label>Nombre y apellido</label>
+        <input type="text" name="nombre" required>
+        <label>Email</label>
+        <input type="email" name="email" required>
+        <label>Mensaje</label>
+        <textarea name="mensaje" rows="4" required></textarea>
+        <div style="margin-top: 16px;">
+          <button type="submit" class="btn-primario" style="background: var(--verde-rugby); color: white; border: 1px solid var(--verde-rugby-osc); padding: 9px 22px; border-radius: 4px; font-size: 13px; cursor: pointer;">Enviar</button>
+        </div>
+      </form>
+      <div id="contacto-ok" style="display:none; margin-top:16px; padding:12px; background:#EAF3DE; color:var(--exito); border-radius:4px; font-size:13px;">
+        ✓ Tu mensaje fue enviado. Te vamos a responder a la brevedad.
+      </div>
+    `
+  }
+};
+
+function abrirInfo(pag) {
+  const p = PAGINAS[pag];
+  if (!p) return;
+  document.getElementById('info-content').innerHTML = `
+    <h2>${p.titulo}</h2>
+    <p class="subtitle">${p.subtitulo}</p>
+    ${p.contenido}
+  `;
+  document.getElementById('info-overlay').classList.add('show');
+  // Activar FAQ accordion
+  document.querySelectorAll('.faq-q').forEach(q => {
+    q.addEventListener('click', () => q.parentElement.classList.toggle('open'));
+  });
+}
+function cerrarInfo() {
+  document.getElementById('info-overlay').classList.remove('show');
+}
+function enviarContacto(e) {
+  e.preventDefault();
+  document.getElementById('form-contacto').style.display = 'none';
+  document.getElementById('contacto-ok').style.display = 'block';
+}
+
+// ===== MODAL DE COMPRA =====
+let loteActual = null;
+let formaPago = null;
+let moneda = 'USD';
+let cuotas = 1;
+
+function abrirCompra(idx) {
+  loteActual = idx;
+  formaPago = null;
+  moneda = 'USD';
+  cuotas = 1;
+  
+  const lote = LOTES[idx];
+  const valorUSD = lote.v;
+  const cotiz = 1100; // mock
+  
+  const html = `
+    <h2>Reservar lote</h2>
+    <p class="subt">Completá los datos para reservar tu lote por 7 días hábiles.</p>
+    
+    <div class="lote-info">
+      <div>
+        <div class="id">Lote #${idx + 1}</div>
+        <div style="font-size:11px;color:var(--texto-suave);margin-top:2px">Ubicación: ${zonaLabel(lote.z)}</div>
+      </div>
+      <div class="precio">${PRECIOS[lote.v]}</div>
+    </div>
+    
+    <label>Forma de pago</label>
+    <div class="pill-group" id="formas-pago">
+      <button type="button" class="pill" data-fp="efectivo">Efectivo</button>
+      <button type="button" class="pill" data-fp="transferencia">Transferencia</button>
+      <button type="button" class="pill" data-fp="online">Pago online</button>
+    </div>
+    
+    <label style="margin-top:14px">Moneda</label>
+    <div class="pill-group" id="monedas">
+      <button type="button" class="pill activo" data-mon="USD">USD</button>
+      <button type="button" class="pill" data-mon="ARS">ARS</button>
+    </div>
+    <div id="cotiz-info" style="font-size:11px;color:var(--texto-suave);margin-top:6px;display:none">
+      1 USD = ARS ${cotiz.toLocaleString('es-AR')} · Total: ARS <span id="total-ars">${(valorUSD * cotiz).toLocaleString('es-AR')}</span>
+    </div>
+    
+    <label>Cuotas</label>
+    <div class="pill-group" id="cuotas">
+      <button type="button" class="pill activo" data-c="1">1 cuota</button>
+      <button type="button" class="pill" data-c="2">2 cuotas</button>
+      <button type="button" class="pill" data-c="3">3 cuotas</button>
+    </div>
+    
+    <div class="row">
+      <div>
+        <label>Nombre y apellido</label>
+        <input type="text" id="inp-nombre" required>
+      </div>
+      <div>
+        <label>Teléfono / WhatsApp</label>
+        <input type="text" id="inp-tel">
+      </div>
+    </div>
+    <label>Email</label>
+    <input type="email" id="inp-email" required>
+    
+    <label>Nombre público en el lote</label>
+    <input type="text" id="inp-nompub" placeholder="Ej: Familia García, o 'Aporte anónimo'">
+    <div style="font-size:11px;color:var(--texto-suave);margin-top:4px">Este nombre aparecerá públicamente sobre el lote en el mapa.</div>
+    
+    <label>Segmento</label>
+    <select id="inp-segmento">
+      <option value="">Seleccioná un segmento</option>
+      <option>Familia rugby</option>
+      <option>Familia hockey</option>
+      <option>Socio</option>
+      <option>Ex socio</option>
+      <option>No socio</option>
+      <option>Otro</option>
+    </select>
+    
+    <div class="terminos">
+      <input type="checkbox" id="inp-terminos" required>
+      <label for="inp-terminos" style="margin: 0; font-weight: 400;">
+        Acepto los <a href="#" onclick="event.preventDefault();alert('Acá iría el texto de los términos y condiciones.')">términos y condiciones</a> de la donación.
+      </label>
+    </div>
+    
+    <div class="actions">
+      <button class="btn-secundario" onclick="cerrarCompra()">Cancelar</button>
+      <button class="btn-primario" onclick="confirmarCompra()">Reservar lote</button>
+    </div>
+  `;
+  document.getElementById('modal-compra-content').innerHTML = html;
+  document.getElementById('modal-compra').classList.add('show');
+  
+  // Activar pills
+  document.querySelectorAll('#formas-pago .pill').forEach(p => {
+    p.addEventListener('click', () => {
+      document.querySelectorAll('#formas-pago .pill').forEach(x => x.classList.remove('activo'));
+      p.classList.add('activo');
+      formaPago = p.dataset.fp;
+    });
+  });
+  document.querySelectorAll('#monedas .pill').forEach(p => {
+    p.addEventListener('click', () => {
+      document.querySelectorAll('#monedas .pill').forEach(x => x.classList.remove('activo'));
+      p.classList.add('activo');
+      moneda = p.dataset.mon;
+      document.getElementById('cotiz-info').style.display = moneda === 'ARS' ? 'block' : 'none';
+    });
+  });
+  document.querySelectorAll('#cuotas .pill').forEach(p => {
+    p.addEventListener('click', () => {
+      document.querySelectorAll('#cuotas .pill').forEach(x => x.classList.remove('activo'));
+      p.classList.add('activo');
+      cuotas = parseInt(p.dataset.c);
+    });
+  });
+}
+
+function cerrarCompra() {
+  document.getElementById('modal-compra').classList.remove('show');
+}
+
+function zonaLabel(z) {
+  const labels = {
+    quincho: 'Quincho',
+    bar: 'Bar',
+    cocina: 'Cocina',
+    deck: 'Terraza descubierta',
+    patio_mid: 'Patio central',
+    patio_coc: 'Patio cocina'
+  };
+  return labels[z] || z;
+}
+
+function confirmarCompra() {
+  const nombre = document.getElementById('inp-nombre').value.trim();
+  const email = document.getElementById('inp-email').value.trim();
+  const nompub = document.getElementById('inp-nompub').value.trim() || 'Aporte anónimo';
+  const terminos = document.getElementById('inp-terminos').checked;
+  
+  if (!nombre || !email) { alert('Completá nombre y email.'); return; }
+  if (!formaPago) { alert('Elegí una forma de pago.'); return; }
+  if (!terminos) { alert('Tenés que aceptar los términos y condiciones.'); return; }
+  
+  const lote = LOTES[loteActual];
+  
+  if (formaPago === 'online') {
+    mostrarPagoOnline(lote, nombre, nompub);
+  } else {
+    completarReserva(lote, nombre, nompub, email);
+  }
+}
+
+function mostrarPagoOnline(lote, nombre, nompub) {
+  document.getElementById('modal-compra-content').innerHTML = `
+    <h2>Pago online</h2>
+    <p class="subt">Vas a ser redirigido a Mercado Pago para completar el pago.</p>
+    
+    <div style="background: var(--crema); padding: 20px; border-radius: 6px; margin: 20px 0; text-align: center;">
+      <div style="font-size: 13px; color: var(--texto-suave); margin-bottom: 6px;">Total a pagar</div>
+      <div style="font-size: 28px; font-weight: 600; color: var(--verde-rugby);">${PRECIOS[lote.v]}</div>
+      <div style="font-size: 13px; color: var(--texto-suave); margin-top: 4px;">Lote #${loteActual + 1}</div>
+    </div>
+    
+    <div style="background: white; border: 1px solid var(--borde); padding: 14px; border-radius: 6px; margin-bottom: 16px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <div style="width:32px;height:20px;background:#00A6E5;border-radius:3px;display:flex;align-items:center;justify-content:center;color:white;font-size:9px;font-weight:600">MP</div>
+        <span style="font-weight:500;font-size:13px">Mercado Pago</span>
+      </div>
+      <div style="font-size:11px;color:var(--texto-suave)">Tarjeta de crédito, débito, transferencia o saldo en cuenta</div>
+    </div>
+    
+    <div class="actions">
+      <button class="btn-secundario" onclick="cerrarCompra()">Cancelar</button>
+      <button class="btn-primario" onclick="completarReservaWrapper(${loteActual}, '${escapeHTML(nombre)}', '${escapeHTML(nompub)}')">Pagar ahora</button>
+    </div>
+    
+    <div style="margin-top:16px;font-size:11px;color:var(--texto-suave);text-align:center">
+      Este es un prototipo · El pago no se procesa realmente
+    </div>
+  `;
+}
+
+function completarReservaWrapper(idx, nombre, nompub) {
+  const lote = LOTES[idx];
+  completarReserva(lote, nombre, nompub, '');
+}
+
+function completarReserva(lote, nombre, nompub, email) {
+  estado[loteActual].status = 'vendido';
+  estado[loteActual].nombre = nompub;
+  estado[loteActual].valor = lote.v;
+  
+  // Agregar al ranking
+  let aport = aportantes.find(a => a.nombre === nompub);
+  if (aport) {
+    aport.monto += lote.v;
+    aport.lotes += 1;
+  } else {
+    aportantes.push({nombre: nompub, monto: lote.v, lotes: 1});
+  }
+  
+  renderLotes();
+  
+  // Pantalla de confirmación
+  document.getElementById('modal-compra-content').innerHTML = `
+    <div style="text-align: center; padding: 12px 0;">
+      <div style="width: 64px; height: 64px; border-radius: 50%; background: #EAF3DE; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center;">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#3B6D11" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      </div>
+      <h2 style="text-align:center">¡Compra confirmada!</h2>
+      <p class="subt" style="margin-top:8px;text-align:center">Hemos enviado un correo con todos los detalles.</p>
+      
+      <div style="background: var(--crema); padding: 16px; border-radius: 6px; margin: 20px 0;">
+        <div style="font-size:13px;color:var(--texto-suave);margin-bottom:6px">${escapeHTML(nompub)}</div>
+        <div style="font-size:14px"><strong>Lote #${loteActual + 1}</strong> · ${PRECIOS[lote.v]}</div>
+      </div>
+      
+      <p style="font-size:13px;color:var(--texto-suave);margin-bottom:16px">
+        ¡Gracias por sumarte al proyecto! Tu lote ya figura en el mapa.
+      </p>
+      
+      <div class="actions" style="justify-content:center">
+        <button class="btn-secundario" onclick="cerrarCompra()">Cerrar</button>
+        <button class="btn-primario" onclick="cerrarCompra()">Comprar otro</button>
+      </div>
+    </div>
+  `;
+}
+
+document.getElementById('modal-compra').addEventListener('click', e => {
+  if (e.target.id === 'modal-compra') cerrarCompra();
+});
+document.getElementById('info-overlay').addEventListener('click', e => {
+  if (e.target.id === 'info-overlay') cerrarInfo();
+});
+
+// ===== RANKING DRAWER =====
+function toggleRanking() {
+  const drawer = document.getElementById('ranking');
+  const toggle = document.querySelector('.ranking-toggle');
+  drawer.classList.toggle('open');
+  toggle.classList.toggle('hidden', drawer.classList.contains('open'));
+}
+
+// ===== INIT =====
+renderLotes();
+
+</script>
+</body>
+</html>
