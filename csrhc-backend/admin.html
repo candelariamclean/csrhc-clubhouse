@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin — Nuevo Club House CSRHC</title>
+<style>
+  :root {
+    --rojo:#C0392B; --azul:#2C3E7A; --crema:#F5F0E8;
+    --gris:#b6b3ac; --oscuro:#2a2a1e; --verde:#27AE60;
+  }
+  * { box-sizing:border-box; margin:0; padding:0 }
+  body { font-family:'Segoe UI',sans-serif; background:#f0ede8; color:#333; min-height:100vh }
+
+  header {
+    background:var(--azul); color:#fff; padding:16px 24px;
+    display:flex; align-items:center; gap:12px;
+  }
+  header h1 { font-size:18px; font-weight:700 }
+  header span { font-size:13px; opacity:.7 }
+
+  .stats-bar {
+    display:flex; gap:12px; padding:16px 24px; background:#fff;
+    border-bottom:1px solid #ddd; flex-wrap:wrap;
+  }
+  .stat { background:var(--crema); border-radius:8px; padding:12px 20px; flex:1; min-width:120px; text-align:center }
+  .stat .val { font-size:24px; font-weight:700; color:var(--azul) }
+  .stat .lbl { font-size:11px; color:#888; margin-top:2px }
+
+  .tabs { display:flex; gap:0; padding:0 24px; background:#fff; border-bottom:1px solid #ddd }
+  .tab { padding:12px 20px; cursor:pointer; font-size:14px; border-bottom:3px solid transparent; color:#666 }
+  .tab.active { border-bottom-color:var(--azul); color:var(--azul); font-weight:600 }
+
+  .content { padding:24px; max-width:1100px; margin:0 auto }
+
+  /* TABLA LOTES */
+  .toolbar { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; align-items:center }
+  .toolbar input { padding:8px 12px; border:1px solid #ccc; border-radius:6px; font-size:13px; flex:1; min-width:200px }
+  .toolbar select { padding:8px 12px; border:1px solid #ccc; border-radius:6px; font-size:13px }
+
+  table { width:100%; border-collapse:collapse; background:#fff; border-radius:8px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.08) }
+  th { background:var(--azul); color:#fff; padding:10px 12px; font-size:12px; text-align:left; font-weight:600 }
+  td { padding:9px 12px; font-size:13px; border-bottom:1px solid #eee }
+  tr:hover td { background:#fafafa }
+
+  .badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600 }
+  .badge.disponible { background:#e8f5e9; color:#2e7d32 }
+  .badge.adoptado   { background:#fce4e4; color:#c62828 }
+
+  .btn { padding:5px 12px; border:none; border-radius:5px; cursor:pointer; font-size:12px; font-weight:600 }
+  .btn-liberar  { background:#fce4e4; color:#c62828 }
+  .btn-liberar:hover { background:#ef9a9a }
+  .btn-adoptar  { background:#e8f5e9; color:#2e7d32 }
+  .btn-adoptar:hover { background:#a5d6a7 }
+
+  /* MODAL ALTA MANUAL */
+  .modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:100; align-items:center; justify-content:center }
+  .modal-bg.show { display:flex }
+  .modal { background:#fff; border-radius:12px; padding:28px; width:400px; max-width:95vw }
+  .modal h2 { font-size:17px; margin-bottom:16px; color:var(--azul) }
+  .modal label { display:block; font-size:12px; font-weight:600; margin:10px 0 4px; color:#555 }
+  .modal input { width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:6px; font-size:13px }
+  .modal .actions { display:flex; gap:8px; margin-top:20px; justify-content:flex-end }
+  .btn-primario  { background:var(--azul); color:#fff; padding:8px 18px; border:none; border-radius:6px; cursor:pointer; font-size:13px; font-weight:600 }
+  .btn-secundario{ background:#eee; color:#333; padding:8px 18px; border:none; border-radius:6px; cursor:pointer; font-size:13px }
+
+  /* RANKING */
+  .ranking-table td:first-child { font-weight:600 }
+  .monto { color:var(--azul); font-weight:700 }
+
+  .empty { text-align:center; padding:40px; color:#aaa; font-size:14px }
+  .page-hidden { display:none }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🏉 Nuevo Club House — Panel Admin</h1>
+    <span id="header-stats">Cargando...</span>
+  </div>
+</header>
+
+<div class="stats-bar">
+  <div class="stat"><div class="val" id="s-total">-</div><div class="lbl">Total m²</div></div>
+  <div class="stat"><div class="val" id="s-adoptados">-</div><div class="lbl">Adoptados</div></div>
+  <div class="stat"><div class="val" id="s-disponibles">-</div><div class="lbl">Disponibles</div></div>
+  <div class="stat"><div class="val" id="s-monto">-</div><div class="lbl">Recaudado $</div></div>
+  <div class="stat"><div class="val" id="s-aportantes">-</div><div class="lbl">Aportantes</div></div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab('lotes',this)">Lotes</div>
+  <div class="tab" onclick="showTab('ranking',this)">Ranking aportantes</div>
+</div>
+
+<!-- PÁGINA LOTES -->
+<div class="content" id="page-lotes">
+  <div class="toolbar">
+    <input id="buscar" placeholder="Buscar por nombre, email, WhatsApp..." oninput="renderLotes()">
+    <select id="filtro-estado" onchange="renderLotes()">
+      <option value="">Todos los estados</option>
+      <option value="disponible">Disponibles</option>
+      <option value="adoptado">Adoptados</option>
+    </select>
+    <label style="font-size:12px;color:#888;display:flex;align-items:center;gap:5px">Desde
+      <input type="date" id="filtro-fecha" onchange="renderLotes()" style="padding:7px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px">
+    </label>
+    <button class="btn-secundario" style="background:#eee;color:#555;border:none;border-radius:6px;padding:8px 12px;cursor:pointer;font-size:12px" onclick="limpiarFiltros()">Limpiar</button>
+    <button class="btn-primario" onclick="abrirAltaManual()">+ Alta manual</button>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th><th>Col</th><th>Fila</th><th>Zona</th><th>Valor</th><th>Cuotas</th><th>Estado</th>
+        <th>Nombre</th><th>WhatsApp</th><th>Email</th><th>Fecha</th><th>Acción</th>
+      </tr>
+    </thead>
+    <tbody id="tabla-lotes"></tbody>
+  </table>
+</div>
+
+<!-- PÁGINA RANKING -->
+<div class="content page-hidden" id="page-ranking">
+  <table class="ranking-table">
+    <thead>
+      <tr><th>#</th><th>Nombre</th><th>WhatsApp</th><th>Email</th><th>m²</th><th>Monto USD</th><th>Desde</th></tr>
+    </thead>
+    <tbody id="tabla-ranking"></tbody>
+  </table>
+</div>
+
+<!-- MODAL ALTA MANUAL -->
+<div class="modal-bg" id="modal-alta">
+  <div class="modal">
+    <h2>Alta manual de lote</h2>
+    <label>ID del lote</label>
+    <input id="m-id" placeholder="ej: lote_3_2">
+    <label>Nombre y apellido</label>
+    <input id="m-nombre" placeholder="Nombre completo">
+    <label>WhatsApp</label>
+    <input id="m-wa" placeholder="+54 9 ...">
+    <label>Email</label>
+    <input id="m-email" placeholder="tu@email.com">
+    <label>Nombre público en el plano</label>
+    <input id="m-nompub" placeholder="Ej: Familia García">
+    <div class="actions">
+      <button class="btn-secundario" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn-primario" onclick="altaManual()">Registrar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = window.location.origin;
+let todosLotes = [];
+
+async function cargarStats() {
+  const s = await fetch(`${API}/lotes/stats`).then(r=>r.json());
+  document.getElementById('s-total').textContent = s.total;
+  document.getElementById('s-adoptados').textContent = s.adoptados;
+  document.getElementById('s-disponibles').textContent = s.disponibles;
+  document.getElementById('s-monto').textContent = '$ ' + s.monto.toLocaleString('es-AR');
+  document.getElementById('s-aportantes').textContent = s.aportantes;
+  document.getElementById('header-stats').textContent =
+    `${s.adoptados}/${s.total} m² vendidos · $ ${s.monto.toLocaleString('es-AR')} recaudados`;
+}
+
+async function cargarLotes() {
+  todosLotes = await fetch(`${API}/lotes`).then(r=>r.json());
+  renderLotes();
+}
+
+function limpiarFiltros() {
+  document.getElementById('buscar').value = '';
+  document.getElementById('filtro-estado').value = '';
+  document.getElementById('filtro-fecha').value = '';
+  renderLotes();
+}
+
+function renderLotes() {
+  const busca  = document.getElementById('buscar').value.toLowerCase();
+  const filtro = document.getElementById('filtro-estado').value;
+  const ffecha = document.getElementById('filtro-fecha').value;
+  const tbody  = document.getElementById('tabla-lotes');
+
+  let lista = todosLotes
+    .filter(l => !filtro || l.estado === filtro)
+    .filter(l => !ffecha || (l.fecha && l.fecha.slice(0,10) >= ffecha))
+    .filter(l => !busca ||
+      (l.nombre||'').toLowerCase().includes(busca) ||
+      (l.email||'').toLowerCase().includes(busca) ||
+      (l.whatsapp||'').includes(busca) ||
+      l.id.toLowerCase().includes(busca)
+    );
+
+  if (!lista.length) {
+    tbody.innerHTML = `<tr><td colspan="12" class="empty">Sin resultados</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = lista.map(l => `
+    <tr>
+      <td><code>${l.id}</code></td>
+      <td>${l.id.split('_')[1]}</td>
+      <td>${l.id.split('_')[2]}</td>
+      <td>${l.zona}</td>
+      <td>$ ${l.valor.toLocaleString('es-AR')}</td>
+      <td>${l.cuotas ? l.cuotas + ' cuotas' : '—'}</td>
+      <td><span class="badge ${l.estado}">${l.estado}</span></td>
+      <td>${l.nombre||'—'}</td>
+      <td>${l.whatsapp||'—'}</td>
+      <td>${l.email||'—'}</td>
+      <td>${l.fecha ? l.fecha.slice(0,10) : '—'}</td>
+      <td>
+        ${l.estado === 'adoptado'
+          ? `<button class="btn btn-liberar" onclick="liberarLote('${l.id}')">Liberar</button>`
+          : `<button class="btn btn-adoptar" onclick="abrirAltaManual('${l.id}')">Adoptar</button>`
+        }
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function liberarLote(id) {
+  if (!confirm(`¿Liberar el lote ${id}?`)) return;
+  const r = await fetch(`${API}/lotes/${id}/adoptar`, { method:'DELETE' });
+  if (r.ok) { await cargarTodo(); }
+  else { const e = await r.json(); alert('Error: ' + e.error); }
+}
+
+function abrirAltaManual(id='') {
+  document.getElementById('m-id').value = id;
+  document.getElementById('m-id').readOnly = !!id;
+  document.getElementById('m-nombre').value = '';
+  document.getElementById('m-wa').value = '';
+  document.getElementById('m-email').value = '';
+  document.getElementById('m-nompub').value = '';
+  document.getElementById('modal-alta').classList.add('show');
+}
+
+function cerrarModal() {
+  document.getElementById('modal-alta').classList.remove('show');
+}
+
+async function altaManual() {
+  const id     = document.getElementById('m-id').value.trim();
+  const nombre = document.getElementById('m-nombre').value.trim();
+  const wa     = document.getElementById('m-wa').value.trim();
+  const email  = document.getElementById('m-email').value.trim();
+  const nompub = document.getElementById('m-nompub').value.trim();
+
+  if (!id || !nombre) { alert('ID y nombre son obligatorios'); return; }
+
+  const r = await fetch(`${API}/lotes/${id}/adoptar`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ nombre, whatsapp:wa, email, nombre_publico:nompub })
+  });
+  const data = await r.json();
+  if (r.ok) { cerrarModal(); await cargarTodo(); }
+  else { alert('Error: ' + data.error); }
+}
+
+async function cargarRanking() {
+  const lista = await fetch(`${API}/aportantes`).then(r=>r.json());
+  const tbody = document.getElementById('tabla-ranking');
+  if (!lista.length) {
+    tbody.innerHTML = `<tr><td colspan="7" class="empty">Todavía no hay aportantes</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = lista.map((a,i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td>${a.nombre}</td>
+      <td>${a.whatsapp||'—'}</td>
+      <td>${a.email||'—'}</td>
+      <td>${a.lotes_count}</td>
+      <td class="monto">$ ${a.monto_total.toLocaleString('es-AR')}</td>
+      <td>${a.fecha ? a.fecha.slice(0,10) : '—'}</td>
+    </tr>
+  `).join('');
+}
+
+function showTab(tab, el) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('page-lotes').classList.toggle('page-hidden', tab !== 'lotes');
+  document.getElementById('page-ranking').classList.toggle('page-hidden', tab !== 'ranking');
+  if (tab === 'ranking') cargarRanking();
+}
+
+async function cargarTodo() {
+  await Promise.all([cargarStats(), cargarLotes()]);
+}
+
+cargarTodo();
+setInterval(cargarTodo, 30000); // auto-refresh cada 30s
+</script>
+</body>
+</html>
