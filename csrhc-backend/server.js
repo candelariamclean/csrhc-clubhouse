@@ -6,6 +6,30 @@ const path    = require('path');
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// ── AUTENTICACIÓN DEL ADMIN ───────────────────────────────────────────────────
+// Usuario y contraseña vienen de variables de entorno (ADMIN_USER, ADMIN_PASS)
+function requireAuth(req, res, next) {
+  const user = process.env.ADMIN_USER;
+  const pass = process.env.ADMIN_PASS;
+  // Si no se configuraron credenciales, se bloquea el acceso por seguridad
+  if (!user || !pass) {
+    return res.status(503).send('Admin no configurado. Falta definir ADMIN_USER y ADMIN_PASS.');
+  }
+  const header = req.headers.authorization || '';
+  const [tipo, credenciales] = header.split(' ');
+  if (tipo === 'Basic' && credenciales) {
+    const [u, p] = Buffer.from(credenciales, 'base64').toString().split(':');
+    if (u === user && p === pass) return next();
+  }
+  res.set('WWW-Authenticate', 'Basic realm="Panel Admin CSRHC"');
+  return res.status(401).send('Acceso restringido. Ingresá tus credenciales.');
+}
+
+// Proteger admin.html incluso si lo piden directo
+app.get(['/admin.html','/public/admin.html'], requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ── CONEXIÓN MySQL ───────────────────────────────────────────────────────────
@@ -24,6 +48,8 @@ const pool = mysql.createPool({
 
 const PRECIOS = { premium: 1500000, media: 750000, economica: 450000 };
 const now = () => new Date().toISOString().slice(0, 19).replace('T', ' ');
+
+
 
 // ── INIT: crear tablas y cargar los 400 lotes si hace falta ───────────────────
 async function initDB() {
@@ -135,7 +161,7 @@ app.post('/lotes/:id/adoptar', async (req, res) => {
 });
 
 // DELETE /lotes/:id/adoptar — liberar
-app.delete('/lotes/:id/adoptar', async (req, res) => {
+app.delete('/lotes/:id/adoptar', requireAuth, async (req, res) => {
   const { id } = req.params;
   const conn = await pool.getConnection();
   try {
@@ -175,7 +201,7 @@ app.get('/aportantes', async (req, res) => {
 });
 
 // ── PANEL ADMIN ───────────────────────────────────────────────────────────────
-app.get('/admin', (req, res) => {
+app.get('/admin', requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
