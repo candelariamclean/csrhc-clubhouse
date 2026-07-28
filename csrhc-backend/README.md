@@ -1,41 +1,44 @@
-# CSRHC Backend — Nuevo Club House
+# CSRHC Backend — Nuevo Club House (MySQL)
 
-Backend Node.js + SQLite para gestionar los lotes de la campaña.
+Backend Node.js + Express + MySQL para gestionar los lotes de la campaña.
 
-## Instalación
+## Desplegar en Hostinger (plan Business)
 
-```bash
-cd csrhc-backend
-npm install
-npm start
+### 1. Crear la base de datos MySQL
+En el hPanel: **Databases → MySQL Databases → Create Database**
+Anotá: nombre de base, usuario, contraseña y host (normalmente `localhost`).
+
+### 2. Agregar el sitio Node.js
+En el hPanel: **Websites → Add Website → Node.js Apps → Import Git Repository**
+- Autorizá GitHub y elegí el repo `csrhc-clubhouse`
+- Framework: **Express.js** (o "Other" con entry file `server.js`)
+- Carpeta raíz: `csrhc-backend`
+
+### 3. Configurar variables de entorno
+En el panel del sitio Node.js, sección **Environment Variables**, cargá:
+
+| Variable | Valor |
+|----------|-------|
+| DB_HOST | localhost |
+| DB_USER | (tu usuario MySQL) |
+| DB_PASSWORD | (tu contraseña MySQL) |
+| DB_DATABASE | (nombre de tu base) |
+| DB_PORT | 3306 |
+
+### 4. Deploy
+Click en **Deploy**. Al iniciar, el servidor crea las tablas y carga los 400 lotes automáticamente.
+
+### 5. Conectar el frontend
+En `CSRHC_v7.html`, cambiá la línea:
+```js
+const API_URL = 'http://localhost:3000';
 ```
-
-El servidor corre en http://localhost:3000
-El panel admin en http://localhost:3000/admin
+por la URL de tu backend en Hostinger (ej: `https://tudominio.com` o el subdominio que te asigne).
 
 ## Endpoints
-
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| GET | /lotes | Todos los lotes |
-| GET | /lotes/stats | Resumen (adoptados, monto, etc) |
-| POST | /lotes/init | Carga inicial de lotes desde el frontend |
-| POST | /lotes/:id/adoptar | Registrar adopción |
-| DELETE | /lotes/:id/adoptar | Liberar lote |
-| GET | /aportantes | Ranking de aportantes |
-| GET | /admin | Panel de administración |
-
-## Conectar el frontend
-
-En `CSRHC_v7.html` cambiá esta línea con la URL donde corre el backend:
-
-```js
-const API_URL = 'http://localhost:3000'; // ← tu URL acá
-```
-
-## Deploy en Railway (gratis)
-
-1. Creá cuenta en https://railway.app
-2. New Project → Deploy from GitHub repo
-3. Subí la carpeta csrhc-backend como repo separado
-4. Railway te da una URL — ponela en API_URL del frontend
+- `GET /lotes` — todos los lotes
+- `GET /lotes/stats` — resumen
+- `POST /lotes/:id/adoptar` — registrar adopción
+- `DELETE /lotes/:id/adoptar` — liberar lote
+- `GET /aportantes` — ranking
+- `GET /admin` — panel de administración

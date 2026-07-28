@@ -1,151 +1,177 @@
-const express  = require('express');
-const Database = require('better-sqlite3');
-const cors     = require('cors');
-const path     = require('path');
+const express = require('express');
+const mysql   = require('mysql2/promise');
+const cors    = require('cors');
+const path    = require('path');
 
 const app = express();
-const db  = new Database(path.join(__dirname, 'lotes.db'));
-
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ── INIT TABLAS ─────────────────────────────────────────────────────────────
-db.exec(`
-  CREATE TABLE IF NOT EXISTS lotes (
-    id              TEXT PRIMARY KEY,
-    zona            TEXT    NOT NULL,
-    valor           INTEGER NOT NULL DEFAULT 1000,
-    estado          TEXT    NOT NULL DEFAULT 'disponible',
-    nombre          TEXT,
-    whatsapp        TEXT,
-    email           TEXT,
-    nombre_publico  TEXT,
-    cuotas          INTEGER,
-    fecha           TEXT
-  );
+// ── CONEXIÓN MySQL ───────────────────────────────────────────────────────────
+// Las credenciales vienen de variables de entorno (se configuran en Hostinger).
+// Nunca se escriben directo en el código.
+const pool = mysql.createPool({
+  host:     process.env.DB_HOST || 'localhost',
+  user:     process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_DATABASE,
+  port:     process.env.DB_PORT || 3306,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
+});
 
-  CREATE TABLE IF NOT EXISTS aportantes (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    nombre       TEXT    NOT NULL UNIQUE,
-    whatsapp     TEXT,
-    email        TEXT,
-    monto_total  INTEGER DEFAULT 0,
-    lotes_count  INTEGER DEFAULT 0,
-    fecha        TEXT
-  );
-`);
+const PRECIOS = { premium: 1500000, media: 750000, economica: 450000 };
+const now = () => new Date().toISOString().slice(0, 19).replace('T', ' ');
 
-const PRECIOS = { premium:1500000, media:750000, economica:450000 };
-const now = () => new Date().toISOString();
+// ── INIT: crear tablas y cargar los 400 lotes si hace falta ───────────────────
+async function initDB() {
+  const conn = await pool.getConnection();
+  try {
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS lotes (
+        id              VARCHAR(32) PRIMARY KEY,
+        zona            VARCHAR(20) NOT NULL,
+        valor           INT NOT NULL DEFAULT 1000,
+        estado          VARCHAR(20) NOT NULL DEFAULT 'disponible',
+        nombre          VARCHAR(120),
+        whatsapp        VARCHAR(40),
+        email           VARCHAR(120),
+        nombre_publico  VARCHAR(120),
+        cuotas          INT,
+        fecha           DATETIME
+      )
+    `);
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS aportantes (
+        id           INT AUTO_INCREMENT PRIMARY KEY,
+        nombre       VARCHAR(120) NOT NULL UNIQUE,
+        whatsapp     VARCHAR(40),
+        email        VARCHAR(120),
+        monto_total  INT DEFAULT 0,
+        lotes_count  INT DEFAULT 0,
+        fecha        DATETIME
+      )
+    `);
 
-// ── SEED: cargar los 400 lotes por defecto si la tabla está vacía ─────────────
-// Grilla 40×10: columnas 0-14 = Dorado, 15-24 = Azul, 25-39 = Rojo
-(function seedLotes() {
-  const n = db.prepare('SELECT COUNT(*) as n FROM lotes').get().n;
-  if (n > 0) return;
-  const zonaDe = i => (i < 15 ? 'premium' : i < 25 ? 'media' : 'economica');
-  const insert = db.prepare('INSERT INTO lotes (id, zona, valor) VALUES (?,?,?)');
-  const seed = db.transaction(() => {
-    for (let j = 0; j < 10; j++)
-      for (let i = 0; i < 40; i++) {
-        const zona = zonaDe(i);
-        insert.run(`lote_${i}_${j}`, zona, PRECIOS[zona]);
-      }
-  });
-  seed();
-  console.log('✅ 400 lotes cargados por defecto');
-})();
+    // Seed: cargar los 400 lotes si la tabla está vacía
+    const [rows] = await conn.query('SELECT COUNT(*) AS n FROM lotes');
+    if (rows[0].n === 0) {
+      const zonaDe = i => (i < 15 ? 'premium' : i < 25 ? 'media' : 'economica');
+      const values = [];
+      for (let j = 0; j < 10; j++)
+        for (let i = 0; i < 40; i++) {
+          const zona = zonaDe(i);
+          values.push([`lote_${i}_${j}`, zona, PRECIOS[zona]]);
+        }
+      await conn.query('INSERT INTO lotes (id, zona, valor) VALUES ?', [values]);
+      console.log('✅ 400 lotes cargados por defecto');
+    }
+  } finally {
+    conn.release();
+  }
+}
 
 // ── LOTES ────────────────────────────────────────────────────────────────────
 
-// GET /lotes — todos los lotes
-app.get('/lotes', (req, res) => {
-  res.json(db.prepare('SELECT * FROM lotes').all());
+app.get('/lotes', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM lotes');
+    res.json(rows);
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// GET /lotes/stats — resumen
-app.get('/lotes/stats', (req, res) => {
-  const total     = db.prepare('SELECT COUNT(*) as n FROM lotes').get().n;
-  const adoptados = db.prepare("SELECT COUNT(*) as n FROM lotes WHERE estado='adoptado'").get().n;
-  const monto     = db.prepare("SELECT COALESCE(SUM(valor),0) as s FROM lotes WHERE estado='adoptado'").get().s;
-  const aportantes= db.prepare('SELECT COUNT(*) as n FROM aportantes').get().n;
-  res.json({ total, adoptados, disponibles: total - adoptados, monto, aportantes });
+app.get('/lotes/stats', async (req, res) => {
+  try {
+    const [[t]]  = await pool.query('SELECT COUNT(*) AS n FROM lotes');
+    const [[a]]  = await pool.query("SELECT COUNT(*) AS n FROM lotes WHERE estado='adoptado'");
+    const [[m]]  = await pool.query("SELECT COALESCE(SUM(valor),0) AS s FROM lotes WHERE estado='adoptado'");
+    const [[ap]] = await pool.query('SELECT COUNT(*) AS n FROM aportantes');
+    res.json({ total: t.n, adoptados: a.n, disponibles: t.n - a.n, monto: m.s, aportantes: ap.n });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /lotes/init — carga masiva desde el frontend (solo inserta los que no existen)
-app.post('/lotes/init', (req, res) => {
-  const { lotes } = req.body;
-  if (!lotes) return res.status(400).json({ error: 'Falta campo lotes' });
-  const insert = db.prepare('INSERT OR IGNORE INTO lotes (id, zona, valor) VALUES (?,?,?)');
-  const run = db.transaction(items => {
-    for (const [id, data] of Object.entries(items))
-      insert.run(id, data.zona, data.valor);
-  });
-  run(lotes);
-  res.json({ ok: true, insertados: Object.keys(lotes).length });
+// POST /lotes/init — compat: el frontend puede llamarlo, pero el seed ya corre solo
+app.post('/lotes/init', async (req, res) => {
+  res.json({ ok: true, nota: 'Los lotes se cargan automáticamente al iniciar el servidor.' });
 });
 
-// POST /lotes/:id/adoptar — registrar adopción
-app.post('/lotes/:id/adoptar', (req, res) => {
+// POST /lotes/:id/adoptar
+app.post('/lotes/:id/adoptar', async (req, res) => {
   const { id } = req.params;
-  const { nombre, whatsapp, email, nombre_publico } = req.body;
+  const { nombre, whatsapp, email, nombre_publico, cuotas } = req.body;
+  const conn = await pool.getConnection();
+  try {
+    const [[lote]] = await conn.query('SELECT * FROM lotes WHERE id=?', [id]);
+    if (!lote)                      return res.status(404).json({ error: 'Lote no encontrado' });
+    if (lote.estado === 'adoptado') return res.status(400).json({ error: 'Lote ya adoptado' });
+    if (!nombre)                    return res.status(400).json({ error: 'Nombre requerido' });
 
-  const lote = db.prepare('SELECT * FROM lotes WHERE id=?').get(id);
-  if (!lote)                    return res.status(404).json({ error: 'Lote no encontrado' });
-  if (lote.estado === 'adoptado') return res.status(400).json({ error: 'Lote ya adoptado' });
-  if (!nombre)                  return res.status(400).json({ error: 'Nombre requerido' });
+    const valor = PRECIOS[lote.zona] || lote.valor;
+    await conn.query(
+      `UPDATE lotes SET estado='adoptado', valor=?, nombre=?, whatsapp=?, email=?, nombre_publico=?, cuotas=?, fecha=?
+       WHERE id=?`,
+      [valor, nombre, whatsapp || null, email || null, nombre_publico || nombre, cuotas || null, now(), id]
+    );
 
-  const valorZona = PRECIOS[lote.zona] || lote.valor;
-  db.prepare(`UPDATE lotes
-    SET estado='adoptado', valor=?, nombre=?, whatsapp=?, email=?, nombre_publico=?, cuotas=?, fecha=?
-    WHERE id=?`
-  ).run(valorZona, nombre, whatsapp||null, email||null, nombre_publico||nombre, req.body.cuotas||null, now(), id);
-  lote.valor = valorZona;
-
-  const nompub = nombre_publico || nombre;
-  const ap = db.prepare('SELECT * FROM aportantes WHERE nombre=?').get(nompub);
-  if (ap) {
-    db.prepare('UPDATE aportantes SET monto_total=monto_total+?, lotes_count=lotes_count+1 WHERE nombre=?')
-      .run(lote.valor, nompub);
-  } else {
-    db.prepare('INSERT INTO aportantes (nombre, whatsapp, email, monto_total, lotes_count, fecha) VALUES (?,?,?,?,1,?)')
-      .run(nompub, whatsapp||null, email||null, lote.valor, now());
-  }
-
-  res.json({ ok: true, lote: db.prepare('SELECT * FROM lotes WHERE id=?').get(id) });
-});
-
-// DELETE /lotes/:id/adoptar — liberar lote (baja)
-app.delete('/lotes/:id/adoptar', (req, res) => {
-  const { id } = req.params;
-  const lote = db.prepare('SELECT * FROM lotes WHERE id=?').get(id);
-  if (!lote)                       return res.status(404).json({ error: 'Lote no encontrado' });
-  if (lote.estado !== 'adoptado')  return res.status(400).json({ error: 'Lote no está adoptado' });
-
-  const nompub = lote.nombre_publico || lote.nombre;
-  const ap = db.prepare('SELECT * FROM aportantes WHERE nombre=?').get(nompub);
-  if (ap) {
-    if (ap.lotes_count <= 1) {
-      db.prepare('DELETE FROM aportantes WHERE nombre=?').run(nompub);
+    const nompub = nombre_publico || nombre;
+    const [[ap]] = await conn.query('SELECT * FROM aportantes WHERE nombre=?', [nompub]);
+    if (ap) {
+      await conn.query('UPDATE aportantes SET monto_total=monto_total+?, lotes_count=lotes_count+1 WHERE nombre=?',
+        [valor, nompub]);
     } else {
-      db.prepare('UPDATE aportantes SET monto_total=monto_total-?, lotes_count=lotes_count-1 WHERE nombre=?')
-        .run(lote.valor, nompub);
+      await conn.query('INSERT INTO aportantes (nombre, whatsapp, email, monto_total, lotes_count, fecha) VALUES (?,?,?,?,1,?)',
+        [nompub, whatsapp || null, email || null, valor, now()]);
     }
+
+    const [[updated]] = await conn.query('SELECT * FROM lotes WHERE id=?', [id]);
+    res.json({ ok: true, lote: updated });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  } finally {
+    conn.release();
   }
+});
 
-  db.prepare(`UPDATE lotes
-    SET estado='disponible', nombre=NULL, whatsapp=NULL, email=NULL, nombre_publico=NULL, fecha=NULL
-    WHERE id=?`).run(id);
+// DELETE /lotes/:id/adoptar — liberar
+app.delete('/lotes/:id/adoptar', async (req, res) => {
+  const { id } = req.params;
+  const conn = await pool.getConnection();
+  try {
+    const [[lote]] = await conn.query('SELECT * FROM lotes WHERE id=?', [id]);
+    if (!lote)                      return res.status(404).json({ error: 'Lote no encontrado' });
+    if (lote.estado !== 'adoptado') return res.status(400).json({ error: 'Lote no está adoptado' });
 
-  res.json({ ok: true });
+    const nompub = lote.nombre_publico || lote.nombre;
+    const [[ap]] = await conn.query('SELECT * FROM aportantes WHERE nombre=?', [nompub]);
+    if (ap) {
+      if (ap.lotes_count <= 1) {
+        await conn.query('DELETE FROM aportantes WHERE nombre=?', [nompub]);
+      } else {
+        await conn.query('UPDATE aportantes SET monto_total=monto_total-?, lotes_count=lotes_count-1 WHERE nombre=?',
+          [lote.valor, nompub]);
+      }
+    }
+
+    await conn.query(
+      `UPDATE lotes SET estado='disponible', nombre=NULL, whatsapp=NULL, email=NULL,
+       nombre_publico=NULL, cuotas=NULL, fecha=NULL WHERE id=?`, [id]
+    );
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  } finally {
+    conn.release();
+  }
 });
 
 // ── APORTANTES ───────────────────────────────────────────────────────────────
-
-// GET /aportantes — ranking completo
-app.get('/aportantes', (req, res) => {
-  res.json(db.prepare('SELECT * FROM aportantes ORDER BY monto_total DESC').all());
+app.get('/aportantes', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM aportantes ORDER BY monto_total DESC');
+    res.json(rows);
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ── PANEL ADMIN ───────────────────────────────────────────────────────────────
@@ -155,7 +181,14 @@ app.get('/admin', (req, res) => {
 
 // ── START ─────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`✅ CSRHC Backend corriendo en http://localhost:${PORT}`);
-  console.log(`📋 Panel admin: http://localhost:${PORT}/admin`);
-});
+initDB()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`✅ CSRHC Backend (MySQL) corriendo en puerto ${PORT}`);
+      console.log(`📋 Panel admin: /admin`);
+    });
+  })
+  .catch(err => {
+    console.error('❌ Error inicializando la base de datos:', err.message);
+    process.exit(1);
+  });
