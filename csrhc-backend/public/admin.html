@@ -45,6 +45,8 @@
 
   .badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600 }
   .badge.disponible { background:#e8f5e9; color:#2e7d32 }
+  .badge.reservado  { background:#eeece8; color:#7a766e }
+  .badge.vendido    { background:#e8e8e2; color:#4a4a3a }
   .badge.adoptado   { background:#fce4e4; color:#c62828 }
 
   .btn { padding:5px 12px; border:none; border-radius:5px; cursor:pointer; font-size:12px; font-weight:600 }
@@ -52,6 +54,10 @@
   .btn-liberar:hover { background:#ef9a9a }
   .btn-adoptar  { background:#e8f5e9; color:#2e7d32 }
   .btn-adoptar:hover { background:#a5d6a7 }
+  .btn-confirmar { background:#d6f0d8; color:#1b7a2e }
+  .btn-confirmar:hover { background:#a5d6a7 }
+  .btn-rechazar  { background:#fde0e0; color:#c62828 }
+  .btn-rechazar:hover { background:#ef9a9a }
 
   /* MODAL ALTA MANUAL */
   .modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:100; align-items:center; justify-content:center }
@@ -83,7 +89,8 @@
 
 <div class="stats-bar">
   <div class="stat"><div class="val" id="s-total">-</div><div class="lbl">Total m²</div></div>
-  <div class="stat"><div class="val" id="s-adoptados">-</div><div class="lbl">Adoptados</div></div>
+  <div class="stat"><div class="val" id="s-adoptados">-</div><div class="lbl">Vendidos</div></div>
+  <div class="stat"><div class="val" id="s-reservados">-</div><div class="lbl">Reservados</div></div>
   <div class="stat"><div class="val" id="s-disponibles">-</div><div class="lbl">Disponibles</div></div>
   <div class="stat"><div class="val" id="s-monto">-</div><div class="lbl">Recaudado $</div></div>
   <div class="stat"><div class="val" id="s-aportantes">-</div><div class="lbl">Aportantes</div></div>
@@ -101,7 +108,8 @@
     <select id="filtro-estado" onchange="renderLotes()">
       <option value="">Todos los estados</option>
       <option value="disponible">Disponibles</option>
-      <option value="adoptado">Adoptados</option>
+      <option value="reservado">Reservados</option>
+      <option value="vendido">Vendidos</option>
     </select>
     <label style="font-size:12px;color:#888;display:flex;align-items:center;gap:5px">Desde
       <input type="date" id="filtro-fecha" onchange="renderLotes()" style="padding:7px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px">
@@ -158,7 +166,8 @@ let todosLotes = [];
 async function cargarStats() {
   const s = await fetch(`${API}/lotes/stats`).then(r=>r.json());
   document.getElementById('s-total').textContent = s.total;
-  document.getElementById('s-adoptados').textContent = s.adoptados;
+  document.getElementById('s-adoptados').textContent = s.vendidos !== undefined ? s.vendidos : s.adoptados;
+  if(document.getElementById('s-reservados')) document.getElementById('s-reservados').textContent = s.reservados || 0;
   document.getElementById('s-disponibles').textContent = s.disponibles;
   document.getElementById('s-monto').textContent = '$ ' + s.monto.toLocaleString('es-AR');
   document.getElementById('s-aportantes').textContent = s.aportantes;
@@ -213,9 +222,13 @@ function renderLotes() {
       <td>${l.email||'—'}</td>
       <td>${l.fecha ? l.fecha.slice(0,10) : '—'}</td>
       <td>
-        ${l.estado === 'adoptado'
-          ? `<button class="btn btn-liberar" onclick="liberarLote('${l.id}')">Liberar</button>`
-          : `<button class="btn btn-adoptar" onclick="abrirAltaManual('${l.id}')">Adoptar</button>`
+        ${
+          l.estado === 'reservado'
+            ? `<button class="btn btn-confirmar" onclick="confirmarLote('${l.id}')">Confirmar</button>
+               <button class="btn btn-rechazar" onclick="rechazarLote('${l.id}')">Rechazar</button>`
+          : l.estado === 'vendido'
+            ? `<button class="btn btn-liberar" onclick="liberarLote('${l.id}')">Liberar</button>`
+            : `<button class="btn btn-adoptar" onclick="abrirAltaManual('${l.id}')">Registrar</button>`
         }
       </td>
     </tr>
@@ -223,8 +236,22 @@ function renderLotes() {
 }
 
 async function liberarLote(id) {
-  if (!confirm(`¿Liberar el lote ${id}?`)) return;
+  if (!confirm(`¿Liberar el lote ${id}? Vuelve a estar disponible.`)) return;
   const r = await fetch(`${API}/lotes/${id}/adoptar`, { method:'DELETE' });
+  if (r.ok) { await cargarTodo(); }
+  else { const e = await r.json(); alert('Error: ' + e.error); }
+}
+
+async function confirmarLote(id) {
+  if (!confirm(`¿Confirmar la venta del lote ${id}? Pasa a VENDIDO y suma al recaudado.`)) return;
+  const r = await fetch(`${API}/lotes/${id}/confirmar`, { method:'POST' });
+  if (r.ok) { await cargarTodo(); }
+  else { const e = await r.json(); alert('Error: ' + e.error); }
+}
+
+async function rechazarLote(id) {
+  if (!confirm(`¿Rechazar la reserva del lote ${id}? Vuelve a estar disponible.`)) return;
+  const r = await fetch(`${API}/lotes/${id}/rechazar`, { method:'POST' });
   if (r.ok) { await cargarTodo(); }
   else { const e = await r.json(); alert('Error: ' + e.error); }
 }

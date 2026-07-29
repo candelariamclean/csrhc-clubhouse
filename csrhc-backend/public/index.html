@@ -44,7 +44,8 @@ body{font-family:'Inter',sans-serif;background:#b6b3ac;color:var(--texto)}
 .lote{transition:filter .12s,opacity .12s}
 .lote:hover{filter:brightness(1.45) drop-shadow(0 -4px 7px rgba(255,255,255,.7));opacity:1!important}
 .lote.dim{opacity:.07!important;pointer-events:none}
-.lote.vendido{fill:#2f6f4f!important;stroke:#1d4a34!important;opacity:.97!important}
+.lote.reservado{fill:#a8a49c!important;stroke:#8a867e!important;opacity:.95!important}
+.lote.vendido{fill:#4a4a3a!important;stroke:#2a2a1e!important;opacity:.97!important}
 .toolbar{position:fixed;top:70px;left:14px;z-index:20}
 .filtros-panel{background:white;border-radius:6px;padding:8px;box-shadow:0 2px 10px rgba(0,0,0,.12);display:flex;flex-direction:column;gap:4px}
 .filtros-panel .titulo{font-size:10px;font-weight:600;color:var(--texto-suave);letter-spacing:.5px;text-transform:uppercase;padding:2px 4px 6px;border-bottom:1px solid var(--crema-osc);margin-bottom:2px}
@@ -138,7 +139,7 @@ body{font-family:'Inter',sans-serif;background:#b6b3ac;color:var(--texto)}
     <button class="nav-btn" onclick="mostrarInfo('proyecto')">El Proyecto</button>
     <button class="nav-btn" onclick="mostrarInfo('faq')">FAQ</button>
   </nav>
-  <button class="btn-dorar" onclick="cerrarLanding()">Ver el modelo →</button>
+  <button class="btn-dorar" id="btn-ver-modelo" onclick="cerrarLanding()">Ver el modelo →</button>
 </header>
 
 <div class="landing-overlay" id="landing">
@@ -767,7 +768,8 @@ body{font-family:'Inter',sans-serif;background:#b6b3ac;color:var(--texto)}
     <div class="legend-item"><div class="legend-dot" style="background:#d8c48a"></div>$ 1.500.000</div>
     <div class="legend-item"><div class="legend-dot" style="background:#9aabc8"></div>$ 750.000</div>
     <div class="legend-item"><div class="legend-dot" style="background:#c99a9a"></div>$ 450.000</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#2f6f4f"></div>Vendido</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#a8a49c"></div>Reservado</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#4a4a3a"></div>Vendido</div>
   </div>
   <span style="font-size:11px;color:#aaa">© 2026 CSRHC · Prototipo</span>
 </div>
@@ -803,14 +805,23 @@ async function sincronizarBackend() {
     // 2. Cargar estados actuales
     const lotes = await fetch(`${API_URL}/lotes`).then(r=>r.json());
     lotes.forEach(l => {
-      if (l.estado === 'adoptado') {
+      const el = document.getElementById('lote-' + l.id);
+      if (l.estado === 'vendido' || l.estado === 'adoptado') {
         estadoLote[l.id] = 'vendido';
-        const el = document.getElementById('lote-' + l.id);
         if (el) {
-          el.setAttribute('fill','#2f6f4f');
-          el.setAttribute('stroke','#1d4a34');
+          el.setAttribute('fill','#4a4a3a');
+          el.setAttribute('stroke','#2a2a1e');
           el.setAttribute('opacity','0.97');
+          el.classList.remove('reservado');
           el.classList.add('vendido');
+        }
+      } else if (l.estado === 'reservado') {
+        estadoLote[l.id] = 'reservado';
+        if (el) {
+          el.setAttribute('fill','#a8a49c');
+          el.setAttribute('stroke','#8a867e');
+          el.setAttribute('opacity','0.95');
+          el.classList.add('reservado');
         }
       }
     });
@@ -836,7 +847,7 @@ window.addEventListener('DOMContentLoaded', sincronizarBackend);
 let aportantes=[],loteActual=null,formaPago=null,moneda='USD',cuotas=1;
 let zoom=1,panX=0,panY=0,dragging=false,lastX,lastY;
 
-function cerrarLanding(){const el=document.getElementById('landing');el.style.opacity='0';el.style.pointerEvents='none';setTimeout(()=>el.style.display='none',400)}
+function cerrarLanding(){const el=document.getElementById('landing');el.style.opacity='0';el.style.pointerEvents='none';setTimeout(()=>el.style.display='none',400);const btn=document.getElementById('btn-ver-modelo');if(btn)btn.style.display='none';}
 
 const mc=document.getElementById('mapa-container'),mw=document.getElementById('mapa-wrap');
 mc.addEventListener('mousedown',e=>{if(e.target.closest('.lote'))return;dragging=true;lastX=e.clientX;lastY=e.clientY;mc.classList.add('grabbing')});
@@ -848,7 +859,7 @@ function resetZoom(){zoom=1;panX=0;panY=0;upT()}
 function upT(a=true){if(!a)mw.classList.add('no-anim');else mw.classList.remove('no-anim');mw.style.transform=`translate(calc(-50% + ${panX}px),calc(-50% + ${panY}px)) scale(${zoom})`}
 
 const tip=document.getElementById('tooltip');
-function showTip(e,lid){const l=LOTES[lid];if(!l)return;const z=ZONAS[l.zona];if(!z)return;const est=estadoLote[lid];const badge=est==='vendido'?' ✓ Adoptado':'';tip.innerHTML=`<strong>${z.nombre}</strong>${badge} &nbsp;<span class="precio">$ ${z.valor.toLocaleString('es-AR')}/m²</span>`;tip.classList.add('show');moveTip(e)}
+function showTip(e,lid){const l=LOTES[lid];if(!l)return;const z=ZONAS[l.zona];if(!z)return;const est=estadoLote[lid];const badge=est==='vendido'?' ✓ Vendido':(est==='reservado'?' ⏳ Reservado':'');tip.innerHTML=`<strong>${z.nombre}</strong>${badge} &nbsp;<span class="precio">$ ${z.valor.toLocaleString('es-AR')}/m²</span>`;tip.classList.add('show');moveTip(e)}
 function hideTip(){tip.classList.remove('show')}
 function moveTip(e){tip.style.left=e.clientX+'px';tip.style.top=e.clientY+'px'}
 
@@ -856,7 +867,7 @@ function setFiltro(btn,val){document.querySelectorAll('.filtro-btn').forEach(b=>
 
 let cuotaSel=1;
 function abrirCompra(lid){
-  if(estadoLote[lid]==='vendido')return;
+  if(estadoLote[lid]==='vendido'||estadoLote[lid]==='reservado')return;
   loteActual=lid;cuotaSel=1;
   const l=LOTES[lid],z=ZONAS[l.zona];
   const fmt=n=>'$ '+n.toLocaleString('es-AR');
@@ -938,9 +949,9 @@ function confirmar(){
     if (data.error) { alert('Error: ' + data.error); return; }
   }).catch(() => {/* offline: igual muestra confirmación */});
   const l=LOTES[loteActual],z=ZONAS[l.zona];
-  estadoLote[loteActual]='vendido';
+  estadoLote[loteActual]='reservado';
   const el=document.getElementById('lote-'+loteActual);
-  if(el){el.setAttribute('fill','#2f6f4f');el.setAttribute('stroke','#2a2a1e');el.setAttribute('opacity','0.97')}
+  if(el){el.setAttribute('fill','#a8a49c');el.setAttribute('stroke','#8a867e');el.setAttribute('opacity','0.95');el.classList.add('reservado')}
   let ap=aportantes.find(a=>a.nombre===nompub);
   if(ap){ap.monto+=z.valor;ap.lotes++}else aportantes.push({nombre:nompub,monto:z.valor,lotes:1});
   actualizarStats();renderRanking();
@@ -952,7 +963,7 @@ function confirmar(){
       <h2 style="text-align:center">¡Gracias, ${nombre}!</h2>
       <p style="color:var(--texto-suave);font-size:14px;margin:8px 0 8px">Tu m² en <strong>${z.nombre}</strong> quedó registrado.</p>
       <p style="color:var(--azul);font-size:15px;font-weight:700;margin:0 0 20px">${cuotaSel===1 ? 'Pago único de $ '+z.valor.toLocaleString('es-AR') : cuotaSel+' cuotas de $ '+z.cuotas[String(cuotaSel)].toLocaleString('es-AR')}</p>
-      <p style="color:var(--texto-suave);font-size:13px;margin:0 0 20px">Nos contactamos para coordinar el pago.</p>
+      <p style="color:var(--texto-suave);font-size:13px;margin:0 0 20px">Tu reserva quedó registrada. Nos contactamos para coordinar el pago y confirmarla.</p>
 
       <div class="actions" style="justify-content:center"><button class="btn-primario" onclick="cerrarCompra()">¡Listo!</button></div>
     </div>`;
@@ -974,7 +985,7 @@ function renderRanking(){
   if(!aportantes.length){el.innerHTML='<div class="ranking-empty">Todavía no hay aportantes.<br>¡Sé el primero!</div>';return}
   el.innerHTML=[...aportantes].sort((a,b)=>b.monto-a.monto).map((a,i)=>`
     <div class="ranking-item"><div class="pos">${i+1}</div>
-    <div class="info"><div class="nombre">${a.nombre}</div><div class="metros">$ ${a.monto.toLocaleString('es-AR')} · ${a.lotes} m²</div></div></div>`).join('');
+    <div class="info"><div class="nombre">${a.nombre}</div></div></div>`).join('');
 }
 function toggleRanking(){
   document.getElementById('ranking-drawer').classList.toggle('open');
