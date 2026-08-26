@@ -37,7 +37,7 @@ body{font-family:'Inter',sans-serif;background:#b6b3ac;color:var(--texto)}
 .btn-primario:hover{background:var(--azul-med)}
 .btn-secundario{background:white;color:var(--azul);border:1px solid var(--borde);padding:11px 22px;border-radius:5px;font-size:14px;cursor:pointer;font-family:'Inter',sans-serif}
 .btn-secundario:hover{background:var(--crema)}
-.mapa-container{position:fixed;top:58px;left:0;right:0;bottom:54px;overflow:hidden;cursor:grab;background:#b6b3ac}
+.mapa-container{position:fixed;top:58px;left:0;right:0;bottom:54px;overflow:hidden;cursor:grab;background:#b6b3ac;touch-action:none}
 .mapa-container.grabbing{cursor:grabbing}
 .mapa-wrap{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) scale(1);transform-origin:center center;transition:transform .18s cubic-bezier(.4,0,.2,1)}
 .mapa-wrap.no-anim{transition:none}
@@ -818,6 +818,7 @@ const TOTAL_LOTES=400;
 const META=367500000;
 const estadoLote={};Object.keys(LOTES).forEach(k=>estadoLote[k]='disponible');
 let arbolesData={};
+var movedTouch=false;
 
 // ── BACKEND CONFIG ──────────────────────────────────────────────────────────
 const API_URL = window.location.origin; // ← cambiar por tu URL cuando deployés
@@ -893,6 +894,55 @@ mc.addEventListener('mousedown',e=>{if(e.target.closest('.lote'))return;dragging
 window.addEventListener('mousemove',e=>{if(!dragging)return;panX+=e.clientX-lastX;panY+=e.clientY-lastY;lastX=e.clientX;lastY=e.clientY;upT(false)});
 window.addEventListener('mouseup',()=>{dragging=false;mc.classList.remove('grabbing')});
 mc.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.min(3,Math.max(0.4,zoom*(e.deltaY<0?1.1:0.9)));upT()},{passive:false});
+
+// ── GESTOS TÁCTILES (mobile): arrastrar 1 dedo = mover, 2 dedos = zoom ─────────
+let touchDragging=false, lastTouchX=0, lastTouchY=0;
+let pinchDist=0, isPinching=false;
+
+function distancia(t1,t2){
+  const dx=t2.clientX-t1.clientX, dy=t2.clientY-t1.clientY;
+  return Math.hypot(dx,dy);
+}
+
+mc.addEventListener('touchstart',e=>{
+  if(e.touches.length===1){
+    // Un dedo: preparar para mover (salvo que toque un lote/árbol)
+    if(e.target.closest('.lote')||e.target.closest('.arbol')) return;
+    touchDragging=true; movedTouch=false;
+    lastTouchX=e.touches[0].clientX; lastTouchY=e.touches[0].clientY;
+  } else if(e.touches.length===2){
+    // Dos dedos: preparar zoom
+    isPinching=true; touchDragging=false;
+    pinchDist=distancia(e.touches[0],e.touches[1]);
+  }
+},{passive:false});
+
+mc.addEventListener('touchmove',e=>{
+  if(isPinching && e.touches.length===2){
+    e.preventDefault();
+    const nd=distancia(e.touches[0],e.touches[1]);
+    if(pinchDist>0){
+      const factor=nd/pinchDist;
+      zoom=Math.min(3,Math.max(0.4,zoom*factor));
+      upT(false);
+    }
+    pinchDist=nd;
+  } else if(touchDragging && e.touches.length===1){
+    e.preventDefault();
+    const x=e.touches[0].clientX, y=e.touches[0].clientY;
+    const dx=x-lastTouchX, dy=y-lastTouchY;
+    if(Math.abs(dx)>2||Math.abs(dy)>2) movedTouch=true;
+    panX+=dx; panY+=dy;
+    lastTouchX=x; lastTouchY=y;
+    upT(false);
+  }
+},{passive:false});
+
+mc.addEventListener('touchend',e=>{
+  if(e.touches.length===0){ touchDragging=false; isPinching=false; pinchDist=0; }
+  else if(e.touches.length===1){ isPinching=false; touchDragging=true;
+    lastTouchX=e.touches[0].clientX; lastTouchY=e.touches[0].clientY; }
+});
 function doZoom(f){zoom=Math.min(3,Math.max(0.4,zoom*f));upT()}
 function resetZoom(){zoom=1;panX=0;panY=0;upT()}
 function upT(a=true){if(!a)mw.classList.add('no-anim');else mw.classList.remove('no-anim');mw.style.transform=`translate(calc(-50% + ${panX}px),calc(-50% + ${panY}px)) scale(${zoom})`}
@@ -926,6 +976,7 @@ function setFiltro(btn,val){document.querySelectorAll('.filtro-btn').forEach(b=>
 
 let cuotaSel=1;
 function abrirCompra(lid){
+  if(movedTouch){movedTouch=false;return;}
   if(estadoLote[lid]==='vendido'||estadoLote[lid]==='reservado')return;
   loteActual=lid;cuotaSel=1;
   const l=LOTES[lid],z=ZONAS[l.zona];
