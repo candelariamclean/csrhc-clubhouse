@@ -127,6 +127,39 @@ body{font-family:'Inter',sans-serif;background:#b6b3ac;color:var(--texto)}
 .cuota-btn .cn{font-size:11px;color:var(--texto-suave);font-weight:600}
 .cuota-btn .cm{font-size:12.5px;color:var(--azul);font-weight:700}
 .campo-error{border-color:#C0392B !important;background:#FDF0EF !important;box-shadow:0 0 0 2px rgba(192,57,43,.15)}
+
+/* ─────────── MOBILE ─────────── */
+@media (max-width: 768px){
+  .header{height:52px;padding:0 10px;gap:8px}
+  .header-logo{width:30px;height:30px;border-width:1.5px}
+  .header-brand{flex:1 1 auto;min-width:0;overflow:hidden}
+  .header-brand .nombre{font-size:11px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .header-brand .subtitulo{display:none}
+  .nav-links{gap:2px;flex-shrink:0}
+  .nav-btn{font-size:11px;padding:5px 7px}
+  .btn-dorar{font-size:11px;padding:5px 9px;flex-shrink:0}
+  .mapa-container{top:52px;bottom:46px}
+  .landing-overlay{inset:52px 0 46px 0}
+  .ranking-drawer{top:52px;bottom:46px}
+
+  /* footer legend: permitir scroll horizontal y no cortar */
+  .footer{height:auto;min-height:46px;padding:6px 10px;flex-wrap:wrap}
+  .footer-legend{gap:8px 10px;font-size:10px}
+  .legend-item{font-size:10px;gap:3px}
+  .legend-dot{width:10px;height:10px}
+  .footer-legend span{font-size:9px!important}
+
+  /* zoom y controles un poco más arriba para no chocar con footer alto */
+  .zoom-controls{bottom:76px;right:10px}
+  .ranking-toggle{bottom:76px;left:10px}
+}
+
+@media (max-width: 420px){
+  .header-brand{display:none}
+  .nav-btn{font-size:11px;padding:6px 8px}
+  .btn-dorar{font-size:11px;padding:6px 10px}
+  .header{justify-content:space-between}
+}
 </style>
 </head>
 <body>
