@@ -98,6 +98,7 @@
 
 <div class="tabs">
   <div class="tab active" onclick="showTab('lotes',this)">Lotes</div>
+  <div class="tab" onclick="showTab('arboles',this)">Árboles</div>
   <div class="tab" onclick="showTab('ranking',this)">Ranking aportantes</div>
 </div>
 
@@ -129,6 +130,16 @@
 </div>
 
 <!-- PÁGINA RANKING -->
+<div class="content page-hidden" id="page-arboles">
+  <p style="color:#666;font-size:13px;margin-bottom:14px">Aportes extraordinarios. El monto de cada árbol se suma al recaudado y agranda la base del cálculo del porcentaje total.</p>
+  <table>
+    <thead>
+      <tr><th>Árbol</th><th>Estado</th><th>Nombre</th><th>WhatsApp</th><th>Email</th><th>Monto</th><th>Fecha</th><th>Acción</th></tr>
+    </thead>
+    <tbody id="tabla-arboles"></tbody>
+  </table>
+</div>
+
 <div class="content page-hidden" id="page-ranking">
   <table class="ranking-table">
     <thead>
@@ -136,6 +147,29 @@
     </thead>
     <tbody id="tabla-ranking"></tbody>
   </table>
+</div>
+
+<!-- MODAL CARGAR ÁRBOL -->
+<div class="modal-bg" id="modal-arbol">
+  <div class="modal">
+    <h2>Cargar aporte extraordinario (árbol)</h2>
+    <input type="hidden" id="a-id">
+    <label>Nombre y apellido</label>
+    <input id="a-nombre" placeholder="Nombre del aportante">
+    <label>WhatsApp</label>
+    <input id="a-wa" placeholder="+54 9 ...">
+    <label>Email</label>
+    <input id="a-email" placeholder="email@ejemplo.com">
+    <label>Monto del aporte ($)</label>
+    <input id="a-monto" type="number" placeholder="Ej: 2000000">
+    <label>Nombre para el plano <span style="font-weight:400;color:#888">(opcional)</span></label>
+    <input id="a-nompub" placeholder="Cómo figura en el plano (vacío = Anónimo)">
+    <p id="a-error" style="display:none;color:#c62828;font-size:12px;font-weight:600;margin:10px 0 0"></p>
+    <div class="actions">
+      <button class="btn-secundario" onclick="cerrarModalArbol()">Cancelar</button>
+      <button class="btn-primario" onclick="cargarArbol()">Registrar aporte</button>
+    </div>
+  </div>
 </div>
 
 <!-- MODAL ALTA MANUAL -->
@@ -150,8 +184,8 @@
     <input id="m-wa" placeholder="+54 9 ...">
     <label>Email</label>
     <input id="m-email" placeholder="tu@email.com">
-    <label>Nombre público en el plano</label>
-    <input id="m-nompub" placeholder="Ej: Familia García">
+    <label>Nombre para el plano <span style="font-weight:400;color:#888">(opcional)</span></label>
+    <input id="m-nompub" placeholder="Cómo figura en el plano (vacío = Anónimo)">
     <div class="actions">
       <button class="btn-secundario" onclick="cerrarModal()">Cancelar</button>
       <button class="btn-primario" onclick="altaManual()">Registrar</button>
@@ -275,7 +309,7 @@ async function altaManual() {
   const nombre = document.getElementById('m-nombre').value.trim();
   const wa     = document.getElementById('m-wa').value.trim();
   const email  = document.getElementById('m-email').value.trim();
-  const nompub = document.getElementById('m-nompub').value.trim();
+  const nompub = document.getElementById('m-nompub').value.trim() || 'Anónimo';
 
   if (!id || !nombre) { alert('ID y nombre son obligatorios'); return; }
 
@@ -313,8 +347,68 @@ function showTab(tab, el) {
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
   document.getElementById('page-lotes').classList.toggle('page-hidden', tab !== 'lotes');
+  document.getElementById('page-arboles').classList.toggle('page-hidden', tab !== 'arboles');
   document.getElementById('page-ranking').classList.toggle('page-hidden', tab !== 'ranking');
   if (tab === 'ranking') cargarRanking();
+  if (tab === 'arboles') cargarArboles();
+}
+
+async function cargarArboles() {
+  const arboles = await fetch(`${API}/arboles`).then(r=>r.json());
+  const tbody = document.getElementById('tabla-arboles');
+  tbody.innerHTML = arboles.map(a => `
+    <tr>
+      <td>🌳 #${a.id + 1}</td>
+      <td><span class="badge ${a.estado==='vendido'?'vendido':'disponible'}">${a.estado==='vendido'?'aportado':'disponible'}</span></td>
+      <td>${a.nombre||'—'}</td>
+      <td>${a.whatsapp||'—'}</td>
+      <td>${a.email||'—'}</td>
+      <td>${a.monto?('$ '+a.monto.toLocaleString('es-AR')):'—'}</td>
+      <td>${a.fecha ? a.fecha.slice(0,10) : '—'}</td>
+      <td>
+        ${a.estado==='vendido'
+          ? `<button class="btn btn-liberar" onclick="liberarArbol(${a.id})">Liberar</button>`
+          : `<button class="btn btn-adoptar" onclick="abrirModalArbol(${a.id})">Cargar aporte</button>`
+        }
+      </td>
+    </tr>`).join('');
+}
+
+function abrirModalArbol(id) {
+  document.getElementById('a-id').value = id;
+  document.getElementById('a-nombre').value = '';
+  document.getElementById('a-wa').value = '';
+  document.getElementById('a-email').value = '';
+  document.getElementById('a-monto').value = '';
+  document.getElementById('a-nompub').value = '';
+  document.getElementById('a-error').style.display = 'none';
+  document.getElementById('modal-arbol').classList.add('show');
+}
+function cerrarModalArbol() {
+  document.getElementById('modal-arbol').classList.remove('show');
+}
+async function cargarArbol() {
+  const id = document.getElementById('a-id').value;
+  const nombre = document.getElementById('a-nombre').value.trim();
+  const wa = document.getElementById('a-wa').value.trim();
+  const email = document.getElementById('a-email').value.trim();
+  const monto = document.getElementById('a-monto').value.trim();
+  const nompub = document.getElementById('a-nompub').value.trim() || 'Anónimo';
+  const err = document.getElementById('a-error');
+  if (!nombre || !monto) { err.textContent='Nombre y monto son obligatorios'; err.style.display='block'; return; }
+  const r = await fetch(`${API}/arboles/${id}/cargar`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ nombre, whatsapp:wa, email, monto: parseInt(monto,10), nombre_publico:nompub })
+  });
+  const data = await r.json();
+  if (r.ok) { cerrarModalArbol(); await cargarArboles(); await cargarStats(); }
+  else { err.textContent = 'Error: ' + data.error; err.style.display='block'; }
+}
+async function liberarArbol(id) {
+  if (!confirm(`¿Liberar el árbol #${id+1}?`)) return;
+  const r = await fetch(`${API}/arboles/${id}/liberar`, { method:'POST' });
+  if (r.ok) { await cargarArboles(); await cargarStats(); }
+  else { const e = await r.json(); alert('Error: ' + e.error); }
 }
 
 async function cargarTodo() {

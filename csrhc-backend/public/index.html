@@ -45,6 +45,7 @@ body{font-family:'Inter',sans-serif;background:#b6b3ac;color:var(--texto)}
 .lote:hover{filter:brightness(1.45) drop-shadow(0 -4px 7px rgba(255,255,255,.7));opacity:1!important}
 .lote.dim{opacity:.07!important;pointer-events:none}
 .lote.reservado{fill:#a8a49c!important;stroke:#8a867e!important;opacity:.95!important}
+.arbol-aportado ellipse{stroke:#d8c48a!important;stroke-width:2.5!important;filter:drop-shadow(0 0 3px rgba(216,196,138,.8))}
 .lote.vendido{fill:#4a4a3a!important;stroke:#2a2a1e!important;opacity:.97!important}
 .toolbar{position:fixed;top:70px;left:14px;z-index:20}
 .filtros-panel{background:white;border-radius:6px;padding:8px;box-shadow:0 2px 10px rgba(0,0,0,.12);display:flex;flex-direction:column;gap:4px}
@@ -229,26 +230,26 @@ body{font-family:'Inter',sans-serif;background:#b6b3ac;color:var(--texto)}
 <line x1="823.0" y1="393.0" x2="635.9" y2="501.0" stroke="#8a7e72" stroke-width="0.3"/>
 <line x1="840.3" y1="403.0" x2="653.3" y2="511.0" stroke="#8a7e72" stroke-width="0.3"/>
 <line x1="857.6" y1="413.0" x2="670.6" y2="521.0" stroke="#8a7e72" stroke-width="0.3"/>
-<line x1="493.9" y1="115.0" x2="493.9" y2="39.0" stroke="#5A4528" stroke-width="1.8"/>
-<ellipse cx="493.9" cy="32.8" rx="9" ry="10.3" fill="#54622F" stroke="#54622F" stroke-width="0.5"/>
-<line x1="597.8" y1="175.0" x2="597.8" y2="99.0" stroke="#5A4528" stroke-width="1.8"/>
-<ellipse cx="597.8" cy="92.8" rx="9" ry="10.3" fill="#8AAA50" stroke="#54622F" stroke-width="0.5"/>
-<line x1="701.8" y1="235.0" x2="701.8" y2="159.0" stroke="#5A4528" stroke-width="1.8"/>
-<ellipse cx="701.8" cy="152.8" rx="9" ry="10.3" fill="#54622F" stroke="#54622F" stroke-width="0.5"/>
-<line x1="805.7" y1="295.0" x2="805.7" y2="219.0" stroke="#5A4528" stroke-width="1.8"/>
-<ellipse cx="805.7" cy="212.8" rx="9" ry="10.3" fill="#54622F" stroke="#54622F" stroke-width="0.5"/>
-<line x1="909.6" y1="355.0" x2="909.6" y2="279.0" stroke="#5A4528" stroke-width="1.8"/>
-<ellipse cx="909.6" cy="272.8" rx="9" ry="10.3" fill="#54622F" stroke="#54622F" stroke-width="0.5"/>
-<line x1="1013.5" y1="415.0" x2="1013.5" y2="339.0" stroke="#5A4528" stroke-width="1.8"/>
-<ellipse cx="1013.5" cy="332.8" rx="9" ry="10.3" fill="#54622F" stroke="#54622F" stroke-width="0.5"/>
-<line x1="909.6" y1="475.0" x2="909.6" y2="399.0" stroke="#5A4528" stroke-width="1.8"/>
-<ellipse cx="909.6" cy="392.8" rx="9" ry="10.3" fill="#6F7E47" stroke="#54622F" stroke-width="0.5"/>
-<line x1="286.1" y1="115.0" x2="286.1" y2="39.0" stroke="#5A4528" stroke-width="1.8"/>
-<ellipse cx="286.1" cy="32.8" rx="9" ry="10.3" fill="#54622F" stroke="#54622F" stroke-width="0.5"/>
-<line x1="805.7" y1="535.0" x2="805.7" y2="459.0" stroke="#5A4528" stroke-width="1.8"/>
-<ellipse cx="805.7" cy="452.8" rx="9" ry="10.3" fill="#54622F" stroke="#54622F" stroke-width="0.5"/>
-<line x1="182.2" y1="175.0" x2="182.2" y2="99.0" stroke="#5A4528" stroke-width="1.8"/>
-<ellipse cx="182.2" cy="92.8" rx="9" ry="10.3" fill="#54622F" stroke="#54622F" stroke-width="0.5"/>
+<g class="arbol" id="arbol-0" data-cx="493.9" data-cy="32.8" onclick="clickArbol(0)" onmouseenter="showTipArbol(event,0)" onmouseleave="hideTip()" onmousemove="moveTip(event)" style="cursor:pointer"><line x1="493.9" y1="115.0" x2="493.9" y2="39.0" stroke="#5A4528" stroke-width="1.8"/>
+<ellipse cx="493.9" cy="32.8" rx="9" ry="10.3" fill="#54622F" stroke="#54622F" stroke-width="0.5"/></g>
+<g class="arbol" id="arbol-1" data-cx="597.8" data-cy="92.8" onclick="clickArbol(1)" onmouseenter="showTipArbol(event,1)" onmouseleave="hideTip()" onmousemove="moveTip(event)" style="cursor:pointer"><line x1="597.8" y1="175.0" x2="597.8" y2="99.0" stroke="#5A4528" stroke-width="1.8"/>
+<ellipse cx="597.8" cy="92.8" rx="9" ry="10.3" fill="#8AAA50" stroke="#54622F" stroke-width="0.5"/></g>
+<g class="arbol" id="arbol-2" data-cx="701.8" data-cy="152.8" onclick="clickArbol(2)" onmouseenter="showTipArbol(event,2)" onmouseleave="hideTip()" onmousemove="moveTip(event)" style="cursor:pointer"><line x1="701.8" y1="235.0" x2="701.8" y2="159.0" stroke="#5A4528" stroke-width="1.8"/>
+<ellipse cx="701.8" cy="152.8" rx="9" ry="10.3" fill="#54622F" stroke="#54622F" stroke-width="0.5"/></g>
+<g class="arbol" id="arbol-3" data-cx="805.7" data-cy="212.8" onclick="clickArbol(3)" onmouseenter="showTipArbol(event,3)" onmouseleave="hideTip()" onmousemove="moveTip(event)" style="cursor:pointer"><line x1="805.7" y1="295.0" x2="805.7" y2="219.0" stroke="#5A4528" stroke-width="1.8"/>
+<ellipse cx="805.7" cy="212.8" rx="9" ry="10.3" fill="#54622F" stroke="#54622F" stroke-width="0.5"/></g>
+<g class="arbol" id="arbol-4" data-cx="909.6" data-cy="272.8" onclick="clickArbol(4)" onmouseenter="showTipArbol(event,4)" onmouseleave="hideTip()" onmousemove="moveTip(event)" style="cursor:pointer"><line x1="909.6" y1="355.0" x2="909.6" y2="279.0" stroke="#5A4528" stroke-width="1.8"/>
+<ellipse cx="909.6" cy="272.8" rx="9" ry="10.3" fill="#54622F" stroke="#54622F" stroke-width="0.5"/></g>
+<g class="arbol" id="arbol-5" data-cx="1013.5" data-cy="332.8" onclick="clickArbol(5)" onmouseenter="showTipArbol(event,5)" onmouseleave="hideTip()" onmousemove="moveTip(event)" style="cursor:pointer"><line x1="1013.5" y1="415.0" x2="1013.5" y2="339.0" stroke="#5A4528" stroke-width="1.8"/>
+<ellipse cx="1013.5" cy="332.8" rx="9" ry="10.3" fill="#54622F" stroke="#54622F" stroke-width="0.5"/></g>
+<g class="arbol" id="arbol-6" data-cx="909.6" data-cy="392.8" onclick="clickArbol(6)" onmouseenter="showTipArbol(event,6)" onmouseleave="hideTip()" onmousemove="moveTip(event)" style="cursor:pointer"><line x1="909.6" y1="475.0" x2="909.6" y2="399.0" stroke="#5A4528" stroke-width="1.8"/>
+<ellipse cx="909.6" cy="392.8" rx="9" ry="10.3" fill="#6F7E47" stroke="#54622F" stroke-width="0.5"/></g>
+<g class="arbol" id="arbol-7" data-cx="286.1" data-cy="32.8" onclick="clickArbol(7)" onmouseenter="showTipArbol(event,7)" onmouseleave="hideTip()" onmousemove="moveTip(event)" style="cursor:pointer"><line x1="286.1" y1="115.0" x2="286.1" y2="39.0" stroke="#5A4528" stroke-width="1.8"/>
+<ellipse cx="286.1" cy="32.8" rx="9" ry="10.3" fill="#54622F" stroke="#54622F" stroke-width="0.5"/></g>
+<g class="arbol" id="arbol-8" data-cx="805.7" data-cy="452.8" onclick="clickArbol(8)" onmouseenter="showTipArbol(event,8)" onmouseleave="hideTip()" onmousemove="moveTip(event)" style="cursor:pointer"><line x1="805.7" y1="535.0" x2="805.7" y2="459.0" stroke="#5A4528" stroke-width="1.8"/>
+<ellipse cx="805.7" cy="452.8" rx="9" ry="10.3" fill="#54622F" stroke="#54622F" stroke-width="0.5"/></g>
+<g class="arbol" id="arbol-9" data-cx="182.2" data-cy="92.8" onclick="clickArbol(9)" onmouseenter="showTipArbol(event,9)" onmouseleave="hideTip()" onmousemove="moveTip(event)" style="cursor:pointer"><line x1="182.2" y1="175.0" x2="182.2" y2="99.0" stroke="#5A4528" stroke-width="1.8"/>
+<ellipse cx="182.2" cy="92.8" rx="9" ry="10.3" fill="#54622F" stroke="#54622F" stroke-width="0.5"/></g>
 <line x1="390.0" y1="55.0" x2="390.0" y2="-21.0" stroke="#5A4528" stroke-width="1.8"/>
 <ellipse cx="390.0" cy="-27.2" rx="9" ry="10.3" fill="#54622F" stroke="#54622F" stroke-width="0.5"/>
 <polygon points="202.9,251.0 674.0,523.0 672.0,524.2 200.9,252.2" fill="#2a2a1e" stroke="none"/>
@@ -322,20 +323,20 @@ body{font-family:'Inter',sans-serif;background:#b6b3ac;color:var(--texto)}
 <polygon points="245.9,191.0 674.0,438.2 672.0,441.8 243.8,194.6" fill="#2a2a1e" stroke="none"/>
 <polygon points="818.2,355.0 674.0,438.2 674.9,442.5 819.0,359.3" fill="#2a2a1e" stroke="none"/>
 
-<line x1="701.8" y1="595.0" x2="701.8" y2="519.0" stroke="#5A4528" stroke-width="1.8"/>
-<ellipse cx="701.8" cy="512.8" rx="9" ry="10.3" fill="#54622F" stroke="#54622F" stroke-width="0.5"/>
-<line x1="570.1" y1="551.0" x2="570.1" y2="475.0" stroke="#5A4528" stroke-width="1.8"/>
-<ellipse cx="570.1" cy="468.8" rx="9" ry="10.3" fill="#54622F" stroke="#54622F" stroke-width="0.5"/>
-<line x1="466.2" y1="491.0" x2="466.2" y2="415.0" stroke="#5A4528" stroke-width="1.8"/>
-<ellipse cx="466.2" cy="408.8" rx="9" ry="10.3" fill="#54622F" stroke="#54622F" stroke-width="0.5"/>
-<line x1="362.3" y1="431.0" x2="362.3" y2="355.0" stroke="#5A4528" stroke-width="1.8"/>
-<ellipse cx="362.3" cy="348.8" rx="9" ry="10.3" fill="#54622F" stroke="#54622F" stroke-width="0.5"/>
-<line x1="258.4" y1="371.0" x2="258.4" y2="295.0" stroke="#5A4528" stroke-width="1.8"/>
-<ellipse cx="258.4" cy="288.8" rx="9" ry="10.3" fill="#54622F" stroke="#54622F" stroke-width="0.5"/>
-<line x1="154.4" y1="311.0" x2="154.4" y2="235.0" stroke="#5A4528" stroke-width="1.8"/>
-<ellipse cx="154.4" cy="228.8" rx="9" ry="10.3" fill="#6F7E47" stroke="#54622F" stroke-width="0.5"/>
-<line x1="78.2" y1="235.0" x2="78.2" y2="159.0" stroke="#5A4528" stroke-width="1.8"/>
-<ellipse cx="78.2" cy="152.8" rx="9" ry="10.3" fill="#54622F" stroke="#54622F" stroke-width="0.5"/>
+<g class="arbol" id="arbol-10" data-cx="701.8" data-cy="512.8" onclick="clickArbol(10)" onmouseenter="showTipArbol(event,10)" onmouseleave="hideTip()" onmousemove="moveTip(event)" style="cursor:pointer"><line x1="701.8" y1="595.0" x2="701.8" y2="519.0" stroke="#5A4528" stroke-width="1.8"/>
+<ellipse cx="701.8" cy="512.8" rx="9" ry="10.3" fill="#54622F" stroke="#54622F" stroke-width="0.5"/></g>
+<g class="arbol" id="arbol-11" data-cx="570.1" data-cy="468.8" onclick="clickArbol(11)" onmouseenter="showTipArbol(event,11)" onmouseleave="hideTip()" onmousemove="moveTip(event)" style="cursor:pointer"><line x1="570.1" y1="551.0" x2="570.1" y2="475.0" stroke="#5A4528" stroke-width="1.8"/>
+<ellipse cx="570.1" cy="468.8" rx="9" ry="10.3" fill="#54622F" stroke="#54622F" stroke-width="0.5"/></g>
+<g class="arbol" id="arbol-12" data-cx="466.2" data-cy="408.8" onclick="clickArbol(12)" onmouseenter="showTipArbol(event,12)" onmouseleave="hideTip()" onmousemove="moveTip(event)" style="cursor:pointer"><line x1="466.2" y1="491.0" x2="466.2" y2="415.0" stroke="#5A4528" stroke-width="1.8"/>
+<ellipse cx="466.2" cy="408.8" rx="9" ry="10.3" fill="#54622F" stroke="#54622F" stroke-width="0.5"/></g>
+<g class="arbol" id="arbol-13" data-cx="362.3" data-cy="348.8" onclick="clickArbol(13)" onmouseenter="showTipArbol(event,13)" onmouseleave="hideTip()" onmousemove="moveTip(event)" style="cursor:pointer"><line x1="362.3" y1="431.0" x2="362.3" y2="355.0" stroke="#5A4528" stroke-width="1.8"/>
+<ellipse cx="362.3" cy="348.8" rx="9" ry="10.3" fill="#54622F" stroke="#54622F" stroke-width="0.5"/></g>
+<g class="arbol" id="arbol-14" data-cx="258.4" data-cy="288.8" onclick="clickArbol(14)" onmouseenter="showTipArbol(event,14)" onmouseleave="hideTip()" onmousemove="moveTip(event)" style="cursor:pointer"><line x1="258.4" y1="371.0" x2="258.4" y2="295.0" stroke="#5A4528" stroke-width="1.8"/>
+<ellipse cx="258.4" cy="288.8" rx="9" ry="10.3" fill="#54622F" stroke="#54622F" stroke-width="0.5"/></g>
+<g class="arbol" id="arbol-15" data-cx="154.4" data-cy="228.8" onclick="clickArbol(15)" onmouseenter="showTipArbol(event,15)" onmouseleave="hideTip()" onmousemove="moveTip(event)" style="cursor:pointer"><line x1="154.4" y1="311.0" x2="154.4" y2="235.0" stroke="#5A4528" stroke-width="1.8"/>
+<ellipse cx="154.4" cy="228.8" rx="9" ry="10.3" fill="#6F7E47" stroke="#54622F" stroke-width="0.5"/></g>
+<g class="arbol" id="arbol-16" data-cx="78.2" data-cy="152.8" onclick="clickArbol(16)" onmouseenter="showTipArbol(event,16)" onmouseleave="hideTip()" onmousemove="moveTip(event)" style="cursor:pointer"><line x1="78.2" y1="235.0" x2="78.2" y2="159.0" stroke="#5A4528" stroke-width="1.8"/>
+<ellipse cx="78.2" cy="152.8" rx="9" ry="10.3" fill="#54622F" stroke="#54622F" stroke-width="0.5"/></g>
 <g id="lotes-group"><polygon class="lote" id="lote-lote_0_0" data-zona="premium" onclick="abrirCompra('lote_0_0')" onmouseenter="showTip(event,'lote_0_0')" onmouseleave="hideTip()" onmousemove="moveTip(event)" points="390.0,115.4 399.7,121.0 387.2,128.2 377.5,122.6" fill="#d8c48a" stroke="#b89f5a" stroke-width="0.4" opacity="0.9" cursor="pointer"/>
 <polygon class="lote" id="lote-lote_1_0" data-zona="premium" onclick="abrirCompra('lote_1_0')" onmouseenter="showTip(event,'lote_1_0')" onmouseleave="hideTip()" onmousemove="moveTip(event)" points="400.4,121.4 410.1,127.0 397.6,134.2 387.9,128.6" fill="#d8c48a" stroke="#b89f5a" stroke-width="0.4" opacity="0.9" cursor="pointer"/>
 <polygon class="lote" id="lote-lote_2_0" data-zona="premium" onclick="abrirCompra('lote_2_0')" onmouseenter="showTip(event,'lote_2_0')" onmouseleave="hideTip()" onmousemove="moveTip(event)" points="410.8,127.4 420.5,133.0 408.0,140.2 398.3,134.6" fill="#d8c48a" stroke="#b89f5a" stroke-width="0.4" opacity="0.9" cursor="pointer"/>
@@ -754,14 +755,7 @@ body{font-family:'Inter',sans-serif;background:#b6b3ac;color:var(--texto)}
   <button class="zoom-btn" onclick="resetZoom()" style="font-size:13px">⌂</button>
 </div>
 
-<button class="ranking-toggle" id="ranking-toggle" onclick="toggleRanking()">🏆 Aportantes</button>
-<div class="ranking-drawer" id="ranking-drawer">
-  <div class="ranking-header">
-    <h3>🏆 Tabla de aportantes</h3>
-    <button class="ranking-close" onclick="toggleRanking()">✕</button>
-  </div>
-  <div class="ranking-list" id="ranking-list"><div class="ranking-empty">Todavía no hay aportantes.<br>¡Sé el primero!</div></div>
-</div>
+<!-- panel de aportantes removido -->
 
 <div class="footer">
   <div class="footer-legend">
@@ -790,6 +784,7 @@ const ZONAS={"premium": {"nombre": "Sector Dorado", "valor": 1500000, "fill": "#
 const TOTAL_LOTES=400;
 const META=367500000;
 const estadoLote={};Object.keys(LOTES).forEach(k=>estadoLote[k]='disponible');
+let arbolesData={};
 
 // ── BACKEND CONFIG ──────────────────────────────────────────────────────────
 const API_URL = window.location.origin; // ← cambiar por tu URL cuando deployés
@@ -825,15 +820,26 @@ async function sincronizarBackend() {
         }
       }
     });
-    // 3. Cargar stats
+    // 2b. Cargar estado de los árboles (aportes extraordinarios)
+    try {
+      const arboles = await fetch(`${API_URL}/arboles`).then(r=>r.json());
+      arbolesData = {};
+      arboles.forEach(a => {
+        arbolesData[a.id] = a;
+        const g = document.getElementById('arbol-' + a.id);
+        if (g && a.estado === 'vendido') g.classList.add('arbol-aportado');
+      });
+    } catch(e) { /* sin árboles */ }
+    // 3. Cargar stats (el porcentaje viene calculado con base = lotes + árboles)
     const stats = await fetch(`${API_URL}/lotes/stats`).then(r=>r.json());
-    document.getElementById('monto-display').textContent = Math.round((stats.monto/META)*100) + '%';
+    const pct = stats.porcentaje !== undefined ? stats.porcentaje : Math.round((stats.adoptados/stats.total)*100);
+    document.getElementById('monto-display').textContent = pct + '%';
     document.getElementById('adoptados-count').textContent = stats.adoptados;
     document.getElementById('aportantes-count').textContent = stats.aportantes;
-    document.getElementById('progress-fill').style.width = Math.min(100,(stats.monto/META)*100)+'%';
+    document.getElementById('progress-fill').style.width = Math.min(100, pct) + '%';
     if (document.getElementById('stat-adoptados')) document.getElementById('stat-adoptados').textContent = stats.adoptados;
     if (document.getElementById('stat-aportantes')) document.getElementById('stat-aportantes').textContent = stats.aportantes;
-    if (document.getElementById('stat-porcentaje')) document.getElementById('stat-porcentaje').textContent = Math.round((stats.adoptados/stats.total)*100) + '%';
+    if (document.getElementById('stat-porcentaje')) document.getElementById('stat-porcentaje').textContent = pct + '%';
     // 4. Ranking
     const aportantesData = await fetch(`${API_URL}/aportantes`).then(r=>r.json());
     aportantes = aportantesData.map(a => ({ nombre: a.nombre, monto: a.monto_total, lotes: a.lotes_count }));
@@ -859,6 +865,26 @@ function resetZoom(){zoom=1;panX=0;panY=0;upT()}
 function upT(a=true){if(!a)mw.classList.add('no-anim');else mw.classList.remove('no-anim');mw.style.transform=`translate(calc(-50% + ${panX}px),calc(-50% + ${panY}px)) scale(${zoom})`}
 
 const tip=document.getElementById('tooltip');
+
+// ── ÁRBOLES (aportes extraordinarios) ─────────────────────────────────────────
+function clickArbol(id){
+  const a = arbolesData[id];
+  if (a && a.estado === 'vendido'){
+    // Mostrar quién aportó (sin monto, coherente con la vista pública)
+    alert('🌳 Árbol aportado por: ' + (a.nombre_publico || a.nombre) + '\n¡Gracias por tu aporte extraordinario!');
+  }
+  // Si está disponible, no hace nada en el front (se carga desde el admin)
+}
+function showTipArbol(e,id){
+  const a = arbolesData[id];
+  if (a && a.estado === 'vendido'){
+    tip.innerHTML = `<strong>🌳 Árbol</strong> · Aportado por ${a.nombre_publico || a.nombre}`;
+  } else {
+    tip.innerHTML = `<strong>🌳 Árbol</strong> · Aporte extraordinario`;
+  }
+  tip.classList.add('show'); moveTip(e);
+}
+
 function showTip(e,lid){const l=LOTES[lid];if(!l)return;const z=ZONAS[l.zona];if(!z)return;const est=estadoLote[lid];const badge=est==='vendido'?' ✓ Vendido':(est==='reservado'?' ⏳ Reservado':'');tip.innerHTML=`<strong>${z.nombre}</strong>${badge} &nbsp;<span class="precio">$ ${z.valor.toLocaleString('es-AR')}/m²</span>`;tip.classList.add('show');moveTip(e)}
 function hideTip(){tip.classList.remove('show')}
 function moveTip(e){tip.style.left=e.clientX+'px';tip.style.top=e.clientY+'px'}
@@ -893,6 +919,8 @@ function abrirCompra(lid){
       <div><label>WhatsApp</label><input type="text" id="inp-tel" placeholder="+54 9 ..." oninput="this.classList.remove('campo-error')"></div>
     </div>
     <label>Email</label><input type="email" id="inp-email" placeholder="tu@email.com" oninput="this.classList.remove('campo-error')">
+    <label>Nombre para el plano <span style="font-weight:400;color:var(--texto-suave)">(opcional)</span></label>
+    <input type="text" id="inp-nompub" placeholder="Cómo querés figurar (vacío = Anónimo)">
     <p class="subt" style="margin-top:12px">Te vamos a contactar para coordinar tu aporte. ¡Gracias por ser parte!</p>
     <div class="actions">
       <button class="btn-secundario" onclick="cerrarCompra()">Cancelar</button>
@@ -911,7 +939,7 @@ function confirmar(){
   const nombre=document.getElementById('inp-nombre').value.trim();
   const tel=document.getElementById('inp-tel').value.trim();
   const email=document.getElementById('inp-email').value.trim();
-  const nompub=nombre;
+  const nompub=document.getElementById('inp-nompub').value.trim()||'Anónimo';
   // Validar campos obligatorios: nombre, whatsapp y email
   const obligatorios=[
     {id:'inp-nombre', val:nombre},
@@ -981,6 +1009,7 @@ function actualizarStats(){
   document.getElementById('stat-porcentaje').textContent=Math.round((nadopt/TOTAL_LOTES)*100)+'%';
 }
 function renderRanking(){
+  const _rl=document.getElementById('ranking-list'); if(!_rl) return;
   const el=document.getElementById('ranking-list');
   if(!aportantes.length){el.innerHTML='<div class="ranking-empty">Todavía no hay aportantes.<br>¡Sé el primero!</div>';return}
   el.innerHTML=[...aportantes].sort((a,b)=>b.monto-a.monto).map((a,i)=>`
@@ -988,8 +1017,9 @@ function renderRanking(){
     <div class="info"><div class="nombre">${a.nombre}</div></div></div>`).join('');
 }
 function toggleRanking(){
-  document.getElementById('ranking-drawer').classList.toggle('open');
-  document.getElementById('ranking-toggle').classList.toggle('hidden',document.getElementById('ranking-drawer').classList.contains('open'));
+  const d=document.getElementById('ranking-drawer'); if(!d) return;
+  d.classList.toggle('open');
+  const t=document.getElementById('ranking-toggle'); if(t) t.classList.toggle('hidden',d.classList.contains('open'));
 }
 function mostrarInfo(s){
   const c={

@@ -70,6 +70,18 @@ async function initDB() {
       )
     `);
     await conn.query(`
+      CREATE TABLE IF NOT EXISTS arboles (
+        id             INT PRIMARY KEY,
+        estado         VARCHAR(20) NOT NULL DEFAULT 'disponible',
+        nombre         VARCHAR(120),
+        whatsapp       VARCHAR(40),
+        email          VARCHAR(120),
+        nombre_publico VARCHAR(120),
+        monto          INT DEFAULT 0,
+        fecha          DATETIME
+      )
+    `);
+    await conn.query(`
       CREATE TABLE IF NOT EXISTS aportantes (
         id           INT AUTO_INCREMENT PRIMARY KEY,
         nombre       VARCHAR(120) NOT NULL UNIQUE,
@@ -94,6 +106,14 @@ async function initDB() {
       await conn.query('INSERT INTO lotes (id, zona, valor) VALUES ?', [values]);
       console.log('✅ 400 lotes cargados por defecto');
     }
+    // Seed de árboles (17 fijos)
+    const [ar] = await conn.query('SELECT COUNT(*) AS n FROM arboles');
+    if (ar[0].n === 0) {
+      const arboles = [];
+      for (let k = 0; k < 17; k++) arboles.push([k]);
+      await conn.query('INSERT INTO arboles (id) VALUES ?', [arboles]);
+      console.log('✅ 17 árboles cargados por defecto');
+    }
   } finally {
     conn.release();
   }
@@ -111,10 +131,22 @@ app.get('/lotes', async (req, res) => {
 app.get('/lotes/stats', async (req, res) => {
   try {
     const [[t]]  = await pool.query('SELECT COUNT(*) AS n FROM lotes');
-    const [[a]]  = await pool.query("SELECT COUNT(*) AS n FROM lotes WHERE estado='adoptado'");
-    const [[m]]  = await pool.query("SELECT COALESCE(SUM(valor),0) AS s FROM lotes WHERE estado='adoptado'");
+    const [[v]]  = await pool.query("SELECT COUNT(*) AS n FROM lotes WHERE estado='vendido'");
+    const [[r]]  = await pool.query("SELECT COUNT(*) AS n FROM lotes WHERE estado='reservado'");
+    const [[m]]  = await pool.query("SELECT COALESCE(SUM(valor),0) AS s FROM lotes WHERE estado='vendido'");
     const [[ap]] = await pool.query('SELECT COUNT(*) AS n FROM aportantes');
-    res.json({ total: t.n, adoptados: a.n, disponibles: t.n - a.n, monto: m.s, aportantes: ap.n });
+    // Valor total de TODOS los lotes (base) + monto de árboles vendidos
+    const [[baseLotes]] = await pool.query('SELECT COALESCE(SUM(valor),0) AS s FROM lotes');
+    const [[arbVendidos]] = await pool.query("SELECT COALESCE(SUM(monto),0) AS s, COUNT(*) AS n FROM arboles WHERE estado='vendido'");
+    const montoArboles = arbVendidos.s;
+    const baseTotal = baseLotes.s + montoArboles;          // total sobre el que se calcula el %
+    const recaudado = m.s + montoArboles;                  // recaudado real (lotes vendidos + árboles)
+    res.json({ total: t.n, adoptados: v.n, vendidos: v.n, reservados: r.n,
+               disponibles: t.n - v.n - r.n,
+               monto: recaudado, monto_lotes: m.s, monto_arboles: montoArboles,
+               base_total: baseTotal, arboles_vendidos: arbVendidos.n,
+               porcentaje: baseTotal > 0 ? Math.round((recaudado / baseTotal) * 100) : 0,
+               aportantes: ap.n });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -123,36 +155,79 @@ app.post('/lotes/init', async (req, res) => {
   res.json({ ok: true, nota: 'Los lotes se cargan automáticamente al iniciar el servidor.' });
 });
 
-// POST /lotes/:id/adoptar
+// POST /lotes/:id/adoptar → crea una RESERVA (queda pendiente de confirmación)
 app.post('/lotes/:id/adoptar', async (req, res) => {
   const { id } = req.params;
   const { nombre, whatsapp, email, nombre_publico, cuotas } = req.body;
   const conn = await pool.getConnection();
   try {
     const [[lote]] = await conn.query('SELECT * FROM lotes WHERE id=?', [id]);
-    if (!lote)                      return res.status(404).json({ error: 'Lote no encontrado' });
-    if (lote.estado === 'adoptado') return res.status(400).json({ error: 'Lote ya adoptado' });
-    if (!nombre)                    return res.status(400).json({ error: 'Nombre requerido' });
+    if (!lote)                       return res.status(404).json({ error: 'Lote no encontrado' });
+    if (lote.estado === 'vendido')   return res.status(400).json({ error: 'Lote ya vendido' });
+    if (lote.estado === 'reservado') return res.status(400).json({ error: 'Lote ya reservado' });
+    if (!nombre)                     return res.status(400).json({ error: 'Nombre requerido' });
 
     const valor = PRECIOS[lote.zona] || lote.valor;
+    // Queda RESERVADO: bloquea el lote pero todavía no suma al recaudado ni al ranking
     await conn.query(
-      `UPDATE lotes SET estado='adoptado', valor=?, nombre=?, whatsapp=?, email=?, nombre_publico=?, cuotas=?, fecha=?
+      `UPDATE lotes SET estado='reservado', valor=?, nombre=?, whatsapp=?, email=?, nombre_publico=?, cuotas=?, fecha=?
        WHERE id=?`,
       [valor, nombre, whatsapp || null, email || null, nombre_publico || nombre, cuotas || null, now(), id]
     );
+    const [[updated]] = await conn.query('SELECT * FROM lotes WHERE id=?', [id]);
+    res.json({ ok: true, lote: updated });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  } finally {
+    conn.release();
+  }
+});
 
-    const nompub = nombre_publico || nombre;
+// POST /lotes/:id/confirmar → RESERVADO se vuelve VENDIDO (suma al recaudado/ranking)
+app.post('/lotes/:id/confirmar', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const conn = await pool.getConnection();
+  try {
+    const [[lote]] = await conn.query('SELECT * FROM lotes WHERE id=?', [id]);
+    if (!lote)                        return res.status(404).json({ error: 'Lote no encontrado' });
+    if (lote.estado !== 'reservado')  return res.status(400).json({ error: 'El lote no está reservado' });
+
+    await conn.query("UPDATE lotes SET estado='vendido' WHERE id=?", [id]);
+
+    // Recién ahora suma al aportante
+    const nompub = lote.nombre_publico || lote.nombre;
     const [[ap]] = await conn.query('SELECT * FROM aportantes WHERE nombre=?', [nompub]);
     if (ap) {
       await conn.query('UPDATE aportantes SET monto_total=monto_total+?, lotes_count=lotes_count+1 WHERE nombre=?',
-        [valor, nompub]);
+        [lote.valor, nompub]);
     } else {
       await conn.query('INSERT INTO aportantes (nombre, whatsapp, email, monto_total, lotes_count, fecha) VALUES (?,?,?,?,1,?)',
-        [nompub, whatsapp || null, email || null, valor, now()]);
+        [nompub, lote.whatsapp || null, lote.email || null, lote.valor, now()]);
     }
 
     const [[updated]] = await conn.query('SELECT * FROM lotes WHERE id=?', [id]);
     res.json({ ok: true, lote: updated });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  } finally {
+    conn.release();
+  }
+});
+
+// POST /lotes/:id/rechazar → RESERVADO vuelve a DISPONIBLE
+app.post('/lotes/:id/rechazar', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const conn = await pool.getConnection();
+  try {
+    const [[lote]] = await conn.query('SELECT * FROM lotes WHERE id=?', [id]);
+    if (!lote)                        return res.status(404).json({ error: 'Lote no encontrado' });
+    if (lote.estado !== 'reservado')  return res.status(400).json({ error: 'El lote no está reservado' });
+
+    await conn.query(
+      `UPDATE lotes SET estado='disponible', nombre=NULL, whatsapp=NULL, email=NULL,
+       nombre_publico=NULL, cuotas=NULL, fecha=NULL WHERE id=?`, [id]
+    );
+    res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
   } finally {
@@ -167,7 +242,7 @@ app.delete('/lotes/:id/adoptar', requireAuth, async (req, res) => {
   try {
     const [[lote]] = await conn.query('SELECT * FROM lotes WHERE id=?', [id]);
     if (!lote)                      return res.status(404).json({ error: 'Lote no encontrado' });
-    if (lote.estado !== 'adoptado') return res.status(400).json({ error: 'Lote no está adoptado' });
+    if (lote.estado !== 'vendido') return res.status(400).json({ error: 'Lote no está vendido' });
 
     const nompub = lote.nombre_publico || lote.nombre;
     const [[ap]] = await conn.query('SELECT * FROM aportantes WHERE nombre=?', [nompub]);
@@ -183,6 +258,84 @@ app.delete('/lotes/:id/adoptar', requireAuth, async (req, res) => {
     await conn.query(
       `UPDATE lotes SET estado='disponible', nombre=NULL, whatsapp=NULL, email=NULL,
        nombre_publico=NULL, cuotas=NULL, fecha=NULL WHERE id=?`, [id]
+    );
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  } finally {
+    conn.release();
+  }
+});
+
+// ── ÁRBOLES (aportes extraordinarios) ─────────────────────────────────────────
+
+// GET /arboles — lista de árboles
+app.get('/arboles', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM arboles ORDER BY id');
+    res.json(rows);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /arboles/:id/cargar — cargar aporte extraordinario (admin, monto manual)
+app.post('/arboles/:id/cargar', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const { nombre, whatsapp, email, monto, nombre_publico } = req.body;
+  const conn = await pool.getConnection();
+  try {
+    const [[arbol]] = await conn.query('SELECT * FROM arboles WHERE id=?', [id]);
+    if (!arbol)                    return res.status(404).json({ error: 'Árbol no encontrado' });
+    if (arbol.estado === 'vendido')return res.status(400).json({ error: 'Árbol ya asignado' });
+    if (!nombre)                   return res.status(400).json({ error: 'Nombre requerido' });
+    const montoNum = parseInt(monto, 10);
+    if (!montoNum || montoNum <= 0) return res.status(400).json({ error: 'Monto inválido' });
+
+    const nompub = nombre_publico || 'Anónimo';
+    await conn.query(
+      "UPDATE arboles SET estado='vendido', nombre=?, whatsapp=?, email=?, nombre_publico=?, monto=?, fecha=? WHERE id=?",
+      [nombre, whatsapp || null, email || null, nompub, montoNum, now(), id]
+    );
+
+    // Suma al aportante usando el nombre público (respeta anónimo)
+    const [[ap]] = await conn.query('SELECT * FROM aportantes WHERE nombre=?', [nompub]);
+    if (ap) {
+      await conn.query('UPDATE aportantes SET monto_total=monto_total+? WHERE nombre=?', [montoNum, nompub]);
+    } else {
+      await conn.query('INSERT INTO aportantes (nombre, whatsapp, email, monto_total, lotes_count, fecha) VALUES (?,?,?,?,0,?)',
+        [nompub, whatsapp || null, email || null, montoNum, now()]);
+    }
+
+    const [[updated]] = await conn.query('SELECT * FROM arboles WHERE id=?', [id]);
+    res.json({ ok: true, arbol: updated });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  } finally {
+    conn.release();
+  }
+});
+
+// POST /arboles/:id/liberar — liberar árbol (admin)
+app.post('/arboles/:id/liberar', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const conn = await pool.getConnection();
+  try {
+    const [[arbol]] = await conn.query('SELECT * FROM arboles WHERE id=?', [id]);
+    if (!arbol)                     return res.status(404).json({ error: 'Árbol no encontrado' });
+    if (arbol.estado !== 'vendido') return res.status(400).json({ error: 'El árbol no está asignado' });
+
+    // Revertir del aportante (por nombre público)
+    const npub = arbol.nombre_publico || arbol.nombre;
+    const [[ap]] = await conn.query('SELECT * FROM aportantes WHERE nombre=?', [npub]);
+    if (ap) {
+      const nuevoMonto = ap.monto_total - arbol.monto;
+      if (nuevoMonto <= 0 && ap.lotes_count <= 0) {
+        await conn.query('DELETE FROM aportantes WHERE nombre=?', [npub]);
+      } else {
+        await conn.query('UPDATE aportantes SET monto_total=monto_total-? WHERE nombre=?', [arbol.monto, npub]);
+      }
+    }
+    await conn.query(
+      "UPDATE arboles SET estado='disponible', nombre=NULL, whatsapp=NULL, email=NULL, monto=0, fecha=NULL WHERE id=?", [id]
     );
     res.json({ ok: true });
   } catch (e) {

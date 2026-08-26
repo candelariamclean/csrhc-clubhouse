@@ -98,6 +98,7 @@
 
 <div class="tabs">
   <div class="tab active" onclick="showTab('lotes',this)">Lotes</div>
+  <div class="tab" onclick="showTab('arboles',this)">Árboles</div>
   <div class="tab" onclick="showTab('ranking',this)">Ranking aportantes</div>
 </div>
 
@@ -129,6 +130,14 @@
 </div>
 
 <!-- PÁGINA RANKING -->
+<div class="content page-hidden" id="page-arboles">
+  <p style="color:#666;font-size:13px;margin-bottom:14px">Aportes extraordinarios. El monto de cada árbol se suma al recaudado y agranda la base del cálculo del porcentaje total.</p>
+  <table>
+    <thead><tr><th>Árbol</th><th>Estado</th><th>Nombre</th><th>WhatsApp</th><th>Email</th><th>Monto</th><th>Fecha</th><th>Acción</th></tr></thead>
+    <tbody id="tabla-arboles"></tbody>
+  </table>
+</div>
+
 <div class="content page-hidden" id="page-ranking">
   <table class="ranking-table">
     <thead>
@@ -136,6 +145,24 @@
     </thead>
     <tbody id="tabla-ranking"></tbody>
   </table>
+</div>
+
+<!-- MODAL CARGAR ÁRBOL -->
+<div class="modal-bg" id="modal-arbol">
+  <div class="modal">
+    <h2>Cargar aporte extraordinario (árbol)</h2>
+    <input type="hidden" id="a-id">
+    <label>Nombre y apellido</label><input id="a-nombre" placeholder="Nombre del aportante">
+    <label>WhatsApp</label><input id="a-wa" placeholder="+54 9 ...">
+    <label>Email</label><input id="a-email" placeholder="email@ejemplo.com">
+    <label>Monto del aporte ($)</label><input id="a-monto" type="number" placeholder="Ej: 2000000">
+    <label>Nombre para el plano <span style="font-weight:400;color:#888">(opcional)</span></label><input id="a-nompub" placeholder="Cómo figura (vacío = Anónimo)">
+    <p id="a-error" style="display:none;color:#c62828;font-size:12px;font-weight:600;margin:10px 0 0"></p>
+    <div class="actions">
+      <button class="btn-secundario" onclick="cerrarModalArbol()">Cancelar</button>
+      <button class="btn-primario" onclick="cargarArbol()">Registrar aporte</button>
+    </div>
+  </div>
 </div>
 
 <!-- MODAL ALTA MANUAL -->
@@ -150,8 +177,8 @@
     <input id="m-wa" placeholder="+54 9 ...">
     <label>Email</label>
     <input id="m-email" placeholder="tu@email.com">
-    <label>Nombre público en el plano</label>
-    <input id="m-nompub" placeholder="Ej: Familia García">
+    <label>Nombre para el plano <span style="font-weight:400;color:#888">(opcional)</span></label>
+    <input id="m-nompub" placeholder="Cómo figura (vacío = Anónimo)">
     <p id="m-error" style="display:none;color:#c62828;font-size:12px;font-weight:600;margin:10px 0 0"></p>
     <div class="actions">
       <button class="btn-secundario" onclick="cerrarModal()">Cancelar</button>
@@ -173,7 +200,11 @@ function recalcular() {
   DEMO_STATS.vendidos = vendidos.length;
   DEMO_STATS.reservados = reservados.length;
   DEMO_STATS.disponibles = DEMO_STATS.total - vendidos.length - reservados.length;
-  DEMO_STATS.monto = vendidos.reduce((s,l)=>s+l.valor, 0);
+  const montoArboles = (typeof DEMO_ARBOLES!=='undefined') ? DEMO_ARBOLES.filter(a=>a.estado==='vendido').reduce((s,a)=>s+a.monto,0) : 0;
+  const baseLotes = todosLotes.reduce((s,l)=>s+l.valor, 0);
+  DEMO_STATS.monto = vendidos.reduce((s,l)=>s+l.valor, 0) + montoArboles;
+  DEMO_STATS.base_total = baseLotes + montoArboles;
+  DEMO_STATS.porcentaje = DEMO_STATS.base_total>0 ? Math.round(DEMO_STATS.monto/DEMO_STATS.base_total*100) : 0;
   const adoptados = vendidos;
   // recomputar aportantes
   const ap = {};
@@ -182,6 +213,13 @@ function recalcular() {
     if (ap[np]) { ap[np].monto_total += l.valor; ap[np].lotes_count++; }
     else ap[np] = { nombre:np, whatsapp:l.whatsapp, email:l.email, monto_total:l.valor, lotes_count:1, fecha:l.fecha };
   });
+  if (typeof DEMO_ARBOLES!=='undefined') {
+    DEMO_ARBOLES.filter(a=>a.estado==='vendido').forEach(a=>{
+      const np=a.nombre_publico||a.nombre;
+      if(ap[np]){ap[np].monto_total+=a.monto;}
+      else ap[np]={nombre:np,whatsapp:a.whatsapp,email:a.email,monto_total:a.monto,lotes_count:0,fecha:a.fecha};
+    });
+  }
   DEMO_APORTANTES = Object.values(ap).sort((a,b)=>b.monto_total-a.monto_total);
   DEMO_STATS.aportantes = DEMO_APORTANTES.length;
 }
@@ -336,8 +374,57 @@ function showTab(tab, el) {
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
   document.getElementById('page-lotes').classList.toggle('page-hidden', tab !== 'lotes');
+  document.getElementById('page-arboles').classList.toggle('page-hidden', tab !== 'arboles');
   document.getElementById('page-ranking').classList.toggle('page-hidden', tab !== 'ranking');
   if (tab === 'ranking') cargarRanking();
+  if (tab === 'arboles') cargarArboles();
+}
+
+let DEMO_ARBOLES = Array.from({length:17},(_, i)=>({id:i,estado:'disponible',nombre:null,whatsapp:null,email:null,monto:0,fecha:null}));
+
+function cargarArboles() {
+  const tbody = document.getElementById('tabla-arboles');
+  tbody.innerHTML = DEMO_ARBOLES.map(a => `
+    <tr>
+      <td>🌳 #${a.id + 1}</td>
+      <td><span class="badge ${a.estado==='vendido'?'vendido':'disponible'}">${a.estado==='vendido'?'aportado':'disponible'}</span></td>
+      <td>${a.nombre||'—'}</td>
+      <td>${a.whatsapp||'—'}</td>
+      <td>${a.email||'—'}</td>
+      <td>${a.monto?('$ '+a.monto.toLocaleString('es-AR')):'—'}</td>
+      <td>${a.fecha ? a.fecha.slice(0,10) : '—'}</td>
+      <td>${a.estado==='vendido'
+        ? `<button class="btn btn-liberar" onclick="liberarArbol(${a.id})">Liberar</button>`
+        : `<button class="btn btn-adoptar" onclick="abrirModalArbol(${a.id})">Cargar aporte</button>`}
+      </td>
+    </tr>`).join('');
+}
+function abrirModalArbol(id){
+  document.getElementById('a-id').value=id;
+  document.getElementById('a-nombre').value='';document.getElementById('a-wa').value='';
+  document.getElementById('a-email').value='';document.getElementById('a-monto').value='';document.getElementById('a-nompub').value='';
+  document.getElementById('a-error').style.display='none';
+  document.getElementById('modal-arbol').classList.add('show');
+}
+function cerrarModalArbol(){document.getElementById('modal-arbol').classList.remove('show');}
+function cargarArbol(){
+  const id=+document.getElementById('a-id').value;
+  const nombre=document.getElementById('a-nombre').value.trim();
+  const wa=document.getElementById('a-wa').value.trim();
+  const email=document.getElementById('a-email').value.trim();
+  const monto=parseInt(document.getElementById('a-monto').value,10);
+  const nompub=document.getElementById('a-nompub').value.trim()||'Anónimo';
+  const err=document.getElementById('a-error');
+  if(!nombre||!monto){err.textContent='Nombre y monto son obligatorios';err.style.display='block';return;}
+  const a=DEMO_ARBOLES.find(x=>x.id===id);
+  a.estado='vendido';a.nombre=nombre;a.whatsapp=wa;a.email=email;a.nombre_publico=nompub;a.monto=monto;a.fecha=new Date().toISOString();
+  // sumar al aportante y recalcular base
+  recalcular(); cerrarModalArbol(); cargarArboles(); cargarStats(); cargarRanking();
+}
+function liberarArbol(id){
+  const a=DEMO_ARBOLES.find(x=>x.id===id);
+  a.estado='disponible';a.nombre=null;a.whatsapp=null;a.email=null;a.monto=0;a.fecha=null;
+  recalcular(); cargarArboles(); cargarStats(); cargarRanking();
 }
 
 async function cargarTodo() {
