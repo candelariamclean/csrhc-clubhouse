@@ -139,12 +139,14 @@ app.get('/lotes/stats', async (req, res) => {
     // Valor total de TODOS los lotes (base) + monto de árboles vendidos
     const [[baseLotes]] = await pool.query('SELECT COALESCE(SUM(valor),0) AS s FROM lotes');
     const [[arbVendidos]] = await pool.query("SELECT COALESCE(SUM(monto),0) AS s, COUNT(*) AS n FROM arboles WHERE estado='vendido'");
-    const montoArboles = arbVendidos.s;
-    const baseTotal = baseLotes.s + montoArboles;          // total sobre el que se calcula el %
-    const recaudado = m.s + montoArboles;                  // recaudado real (lotes vendidos + árboles)
+    const montoArboles = Number(arbVendidos.s) || 0;
+    const montoLotes = Number(m.s) || 0;
+    const baseLotesN = Number(baseLotes.s) || 0;
+    const baseTotal = baseLotesN + montoArboles;           // total sobre el que se calcula el %
+    const recaudado = montoLotes + montoArboles;           // recaudado real (lotes vendidos + árboles)
     res.json({ total: t.n, adoptados: v.n, vendidos: v.n, reservados: r.n,
                disponibles: t.n - v.n - r.n,
-               monto: recaudado, monto_lotes: m.s, monto_arboles: montoArboles,
+               monto: recaudado, monto_lotes: montoLotes, monto_arboles: montoArboles,
                base_total: baseTotal, arboles_vendidos: arbVendidos.n,
                porcentaje: baseTotal > 0 ? Math.round((recaudado / baseTotal) * 100) : 0,
                aportantes: ap.n });
