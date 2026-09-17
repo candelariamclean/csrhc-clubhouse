@@ -818,6 +818,7 @@ const TOTAL_LOTES=400;
 const META=367500000;
 const estadoLote={};Object.keys(LOTES).forEach(k=>estadoLote[k]='disponible');
 let arbolesData={};
+let nombreLote={};
 var movedTouch=false;
 
 // ── BACKEND CONFIG ──────────────────────────────────────────────────────────
@@ -837,6 +838,7 @@ async function sincronizarBackend() {
       const el = document.getElementById('lote-' + l.id);
       if (l.estado === 'vendido' || l.estado === 'adoptado') {
         estadoLote[l.id] = 'vendido';
+        nombreLote[l.id] = l.nombre_publico || 'Anónimo';
         if (el) {
           el.setAttribute('fill','#4a4a3a');
           el.setAttribute('stroke','#2a2a1e');
@@ -846,6 +848,7 @@ async function sincronizarBackend() {
         }
       } else if (l.estado === 'reservado') {
         estadoLote[l.id] = 'reservado';
+        nombreLote[l.id] = l.nombre_publico || 'Anónimo';
         if (el) {
           el.setAttribute('fill','#a8a49c');
           el.setAttribute('stroke','#8a867e');
@@ -968,7 +971,15 @@ function showTipArbol(e,id){
   tip.classList.add('show'); moveTip(e);
 }
 
-function showTip(e,lid){const l=LOTES[lid];if(!l)return;const z=ZONAS[l.zona];if(!z)return;const est=estadoLote[lid];const badge=est==='vendido'?' ✓ Vendido':(est==='reservado'?' ⏳ Reservado':'');tip.innerHTML=`<strong>${z.nombre}</strong>${badge} &nbsp;<span class="precio">$ ${z.valor.toLocaleString('es-AR')}/m²</span>`;tip.classList.add('show');moveTip(e)}
+function showTip(e,lid){const l=LOTES[lid];if(!l)return;const z=ZONAS[l.zona];if(!z)return;const est=estadoLote[lid];
+  if(est==='vendido'){
+    tip.innerHTML=`<strong>${nombreLote[lid]||'Anónimo'}</strong> · ✓ Vendido`;
+  } else if(est==='reservado'){
+    tip.innerHTML=`<strong>⏳ Reservado</strong>`;
+  } else {
+    tip.innerHTML=`<strong>${z.nombre}</strong> &nbsp;<span class="precio">$ ${z.valor.toLocaleString('es-AR')}/m²</span>`;
+  }
+  tip.classList.add('show');moveTip(e)}
 function hideTip(){tip.classList.remove('show')}
 function moveTip(e){tip.style.left=e.clientX+'px';tip.style.top=e.clientY+'px'}
 
@@ -1062,6 +1073,7 @@ function confirmar(){
   }).catch(() => {/* offline: igual muestra confirmación */});
   const l=LOTES[loteActual],z=ZONAS[l.zona];
   estadoLote[loteActual]='reservado';
+  nombreLote[loteActual]=nompub||'Anónimo';
   const el=document.getElementById('lote-'+loteActual);
   if(el){el.setAttribute('fill','#a8a49c');el.setAttribute('stroke','#8a867e');el.setAttribute('opacity','0.95');el.classList.add('reservado')}
   let ap=aportantes.find(a=>a.nombre===nompub);

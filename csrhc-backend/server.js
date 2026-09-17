@@ -84,7 +84,8 @@ async function initDB() {
     await conn.query(`
       CREATE TABLE IF NOT EXISTS aportantes (
         id           INT AUTO_INCREMENT PRIMARY KEY,
-        nombre       VARCHAR(120) NOT NULL UNIQUE,
+        clave        VARCHAR(160) NOT NULL UNIQUE,
+        nombre       VARCHAR(120),
         whatsapp     VARCHAR(40),
         email        VARCHAR(120),
         monto_total  INT DEFAULT 0,
@@ -183,6 +184,45 @@ app.post('/lotes/:id/adoptar', async (req, res) => {
   }
 });
 
+// POST /lotes/:id/registrar → ALTA MANUAL desde admin (queda VENDIDO directo)
+app.post('/lotes/:id/registrar', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const { nombre, whatsapp, email, nombre_publico, cuotas } = req.body;
+  const conn = await pool.getConnection();
+  try {
+    const [[lote]] = await conn.query('SELECT * FROM lotes WHERE id=?', [id]);
+    if (!lote)                     return res.status(404).json({ error: 'Lote no encontrado' });
+    if (lote.estado === 'vendido') return res.status(400).json({ error: 'Lote ya vendido' });
+    if (!nombre)                   return res.status(400).json({ error: 'Nombre requerido' });
+
+    const valor = PRECIOS[lote.zona] || lote.valor;
+    const nompub = nombre_publico || nombre;
+    await conn.query(
+      `UPDATE lotes SET estado='vendido', valor=?, nombre=?, whatsapp=?, email=?, nombre_publico=?, cuotas=?, fecha=?
+       WHERE id=?`,
+      [valor, nombre, whatsapp || null, email || null, nompub, cuotas || null, now(), id]
+    );
+
+    // Suma al aportante agrupando por email
+    const clave = (email && email.trim()) ? email.trim().toLowerCase() : ('lote:' + id);
+    const [[ap]] = await conn.query('SELECT * FROM aportantes WHERE clave=?', [clave]);
+    if (ap) {
+      await conn.query('UPDATE aportantes SET monto_total=monto_total+?, lotes_count=lotes_count+1 WHERE clave=?',
+        [valor, clave]);
+    } else {
+      await conn.query('INSERT INTO aportantes (clave, nombre, whatsapp, email, monto_total, lotes_count, fecha) VALUES (?,?,?,?,?,1,?)',
+        [clave, nompub, whatsapp || null, email || null, valor, now()]);
+    }
+
+    const [[updated]] = await conn.query('SELECT * FROM lotes WHERE id=?', [id]);
+    res.json({ ok: true, lote: updated });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  } finally {
+    conn.release();
+  }
+});
+
 // POST /lotes/:id/confirmar → RESERVADO se vuelve VENDIDO (suma al recaudado/ranking)
 app.post('/lotes/:id/confirmar', requireAuth, async (req, res) => {
   const { id } = req.params;
@@ -194,15 +234,16 @@ app.post('/lotes/:id/confirmar', requireAuth, async (req, res) => {
 
     await conn.query("UPDATE lotes SET estado='vendido' WHERE id=?", [id]);
 
-    // Recién ahora suma al aportante
+    // Suma al aportante, agrupando por EMAIL (si no hay email, cuenta individual por lote)
     const nompub = lote.nombre_publico || lote.nombre;
-    const [[ap]] = await conn.query('SELECT * FROM aportantes WHERE nombre=?', [nompub]);
+    const clave = (lote.email && lote.email.trim()) ? lote.email.trim().toLowerCase() : ('lote:' + lote.id);
+    const [[ap]] = await conn.query('SELECT * FROM aportantes WHERE clave=?', [clave]);
     if (ap) {
-      await conn.query('UPDATE aportantes SET monto_total=monto_total+?, lotes_count=lotes_count+1 WHERE nombre=?',
-        [lote.valor, nompub]);
+      await conn.query('UPDATE aportantes SET monto_total=monto_total+?, lotes_count=lotes_count+1 WHERE clave=?',
+        [lote.valor, clave]);
     } else {
-      await conn.query('INSERT INTO aportantes (nombre, whatsapp, email, monto_total, lotes_count, fecha) VALUES (?,?,?,?,1,?)',
-        [nompub, lote.whatsapp || null, lote.email || null, lote.valor, now()]);
+      await conn.query('INSERT INTO aportantes (clave, nombre, whatsapp, email, monto_total, lotes_count, fecha) VALUES (?,?,?,?,?,1,?)',
+        [clave, nompub, lote.whatsapp || null, lote.email || null, lote.valor, now()]);
     }
 
     const [[updated]] = await conn.query('SELECT * FROM lotes WHERE id=?', [id]);
@@ -244,14 +285,14 @@ app.delete('/lotes/:id/adoptar', requireAuth, async (req, res) => {
     if (!lote)                      return res.status(404).json({ error: 'Lote no encontrado' });
     if (lote.estado !== 'vendido') return res.status(400).json({ error: 'Lote no está vendido' });
 
-    const nompub = lote.nombre_publico || lote.nombre;
-    const [[ap]] = await conn.query('SELECT * FROM aportantes WHERE nombre=?', [nompub]);
+    const clave = (lote.email && lote.email.trim()) ? lote.email.trim().toLowerCase() : ('lote:' + lote.id);
+    const [[ap]] = await conn.query('SELECT * FROM aportantes WHERE clave=?', [clave]);
     if (ap) {
       if (ap.lotes_count <= 1) {
-        await conn.query('DELETE FROM aportantes WHERE nombre=?', [nompub]);
+        await conn.query('DELETE FROM aportantes WHERE clave=?', [clave]);
       } else {
-        await conn.query('UPDATE aportantes SET monto_total=monto_total-?, lotes_count=lotes_count-1 WHERE nombre=?',
-          [lote.valor, nompub]);
+        await conn.query('UPDATE aportantes SET monto_total=monto_total-?, lotes_count=lotes_count-1 WHERE clave=?',
+          [lote.valor, clave]);
       }
     }
 
@@ -296,13 +337,14 @@ app.post('/arboles/:id/cargar', requireAuth, async (req, res) => {
       [nombre, whatsapp || null, email || null, nompub, montoNum, now(), id]
     );
 
-    // Suma al aportante usando el nombre público (respeta anónimo)
-    const [[ap]] = await conn.query('SELECT * FROM aportantes WHERE nombre=?', [nompub]);
+    // Suma al aportante agrupando por email (si no hay, cuenta individual por árbol)
+    const clave = (email && email.trim()) ? email.trim().toLowerCase() : ('arbol:' + id);
+    const [[ap]] = await conn.query('SELECT * FROM aportantes WHERE clave=?', [clave]);
     if (ap) {
-      await conn.query('UPDATE aportantes SET monto_total=monto_total+? WHERE nombre=?', [montoNum, nompub]);
+      await conn.query('UPDATE aportantes SET monto_total=monto_total+? WHERE clave=?', [montoNum, clave]);
     } else {
-      await conn.query('INSERT INTO aportantes (nombre, whatsapp, email, monto_total, lotes_count, fecha) VALUES (?,?,?,?,0,?)',
-        [nompub, whatsapp || null, email || null, montoNum, now()]);
+      await conn.query('INSERT INTO aportantes (clave, nombre, whatsapp, email, monto_total, lotes_count, fecha) VALUES (?,?,?,?,?,0,?)',
+        [clave, nompub, whatsapp || null, email || null, montoNum, now()]);
     }
 
     const [[updated]] = await conn.query('SELECT * FROM arboles WHERE id=?', [id]);
@@ -324,14 +366,14 @@ app.post('/arboles/:id/liberar', requireAuth, async (req, res) => {
     if (arbol.estado !== 'vendido') return res.status(400).json({ error: 'El árbol no está asignado' });
 
     // Revertir del aportante (por nombre público)
-    const npub = arbol.nombre_publico || arbol.nombre;
-    const [[ap]] = await conn.query('SELECT * FROM aportantes WHERE nombre=?', [npub]);
+    const clave = (arbol.email && arbol.email.trim()) ? arbol.email.trim().toLowerCase() : ('arbol:' + id);
+    const [[ap]] = await conn.query('SELECT * FROM aportantes WHERE clave=?', [clave]);
     if (ap) {
       const nuevoMonto = ap.monto_total - arbol.monto;
       if (nuevoMonto <= 0 && ap.lotes_count <= 0) {
-        await conn.query('DELETE FROM aportantes WHERE nombre=?', [npub]);
+        await conn.query('DELETE FROM aportantes WHERE clave=?', [clave]);
       } else {
-        await conn.query('UPDATE aportantes SET monto_total=monto_total-? WHERE nombre=?', [arbol.monto, npub]);
+        await conn.query('UPDATE aportantes SET monto_total=monto_total-? WHERE clave=?', [arbol.monto, clave]);
       }
     }
     await conn.query(

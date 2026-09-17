@@ -141,9 +141,13 @@
 </div>
 
 <div class="content page-hidden" id="page-ranking">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px;flex-wrap:wrap">
+    <p style="color:#666;font-size:13px;margin:0">Los aportantes se agrupan por email. Cada anónimo sin email cuenta individual.</p>
+    <button class="btn-primario" onclick="recalcularAportantes()" style="white-space:nowrap">↻ Recalcular aportantes</button>
+  </div>
   <table class="ranking-table">
     <thead>
-      <tr><th>#</th><th>Nombre</th><th>WhatsApp</th><th>Email</th><th>m²</th><th>Monto USD</th><th>Desde</th></tr>
+      <tr><th>#</th><th>Nombre</th><th>WhatsApp</th><th>Email</th><th>m²</th><th>Monto</th><th>Desde</th></tr>
     </thead>
     <tbody id="tabla-ranking"></tbody>
   </table>
@@ -313,7 +317,7 @@ async function altaManual() {
 
   if (!id || !nombre) { alert('ID y nombre son obligatorios'); return; }
 
-  const r = await fetch(`${API}/lotes/${id}/adoptar`, {
+  const r = await fetch(`${API}/lotes/${id}/registrar`, {
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body: JSON.stringify({ nombre, whatsapp:wa, email, nombre_publico:nompub })
@@ -321,6 +325,19 @@ async function altaManual() {
   const data = await r.json();
   if (r.ok) { cerrarModal(); await cargarTodo(); }
   else { alert('Error: ' + data.error); }
+}
+
+async function recalcularAportantes() {
+  if (!confirm('¿Recalcular la lista de aportantes desde las ventas actuales? Reconstruye el ranking agrupando por email.')) return;
+  const r = await fetch(`${API}/aportantes/recalcular`, { method:'POST' });
+  const data = await r.json();
+  if (r.ok) {
+    alert('✓ Aportantes recalculados: ' + data.aportantes);
+    await cargarTodo();
+    await cargarRanking();
+  } else {
+    alert('Error: ' + data.error);
+  }
 }
 
 async function cargarRanking() {
